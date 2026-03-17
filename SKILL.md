@@ -542,7 +542,9 @@ Apply the Shark Pattern to the given task. Decompose, spawn remoras for slow ops
 
 Run the external shark loop enforcer. Execute:
 ```
-SHARK_MAX_LOOPS=<N> SHARK_LOOP_TIMEOUT=<S> powershell.exe -ExecutionPolicy Bypass -File "<skill_dir>/shark.ps1" "<task>"
+$env:SHARK_MAX_LOOPS = "<N>"
+$env:SHARK_LOOP_TIMEOUT = "<S>"
+powershell.exe -ExecutionPolicy Bypass -File "<skill_dir>/shark.ps1" "<task>"
 ```
 Defaults: `--max-loops 50`, `--timeout 25`. On Linux/Mac use `shark.sh` instead.
 

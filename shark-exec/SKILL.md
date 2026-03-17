@@ -55,7 +55,7 @@ handle = background_exec("gh run watch 12345")
 
 ### Step 3 — Write State
 
-Read `<workspace>/skills/shark-exec/state/pending.json`. If it doesn't exist, start with `{"jobs": []}`.
+Read `<workspace>/skills/shark/shark-exec/state/pending.json`. If it doesn't exist, start with `{"jobs": []}`.
 
 Append your new job:
 
@@ -106,7 +106,7 @@ scheduler.every(15000, () => {
   "schedule": {"kind": "every", "everyMs": 15000},
   "payload": {
     "kind": "agentTurn",
-    "message": "Check <workspace>/skills/shark-exec/state/pending.json for pending background jobs. For each entry: call process(action=poll, sessionId=X, timeout=3000). If completed, send the result to <your notification channel> and remove the entry from pending.json. If still running and startedAt + maxSeconds*1000 < Date.now(), kill it with process(action=kill, sessionId=X) and send partial output with '⏱ killed after Xs'. After processing all entries, if pending.json jobs array is empty, delete this cron job (cronJobId is stored in the state file under cronJobId field)."
+    "message": "Check <workspace>/skills/shark/shark-exec/state/pending.json for pending background jobs. For each entry: call process(action=poll, sessionId=X, timeout=3000). If completed, send the result to <your notification channel> and remove the entry from pending.json. If still running and startedAt + maxSeconds*1000 < Date.now(), kill it with process(action=kill, sessionId=X) and send partial output with '⏱ killed after Xs'. After processing all entries, if pending.json jobs array is empty, delete this cron job (cronJobId is stored in the state file under cronJobId field)."
   },
   "sessionTarget": "isolated",
   "delivery": {"mode": "none"}
@@ -169,7 +169,7 @@ If your runtime keeps completed agents around until you explicitly tear them dow
 
 ## State File Format
 
-**Path:** `<workspace>/skills/shark-exec/state/pending.json`
+**Path:** `<workspace>/skills/shark/shark-exec/state/pending.json`
 
 ```json
 {
@@ -338,7 +338,7 @@ Before every long-running command:
 `scripts/poll-and-deliver.js` — run to inspect current pending jobs:
 
 ```bash
-node <workspace>/skills/shark-exec/scripts/poll-and-deliver.js
+node <workspace>/skills/shark/shark-exec/scripts/poll-and-deliver.js
 ```
 
 Prints a human-readable summary of all pending jobs, their ages, and whether they're past maxSeconds. Useful for debugging stuck jobs.
