@@ -477,6 +477,49 @@ For slow shell commands (>5s), use the **shark-exec** companion skill:
 - Guarantees main turn completes in <30s even for 10-minute commands
 - Use it instead of inline exec whenever the command might block
 
+## Loop Enforcement (Ralph-style)
+
+The 30-second rule is best enforced at the **shell level**, not inside a turn.
+
+Use `shark.sh` (or `shark.ps1` on Windows) to run Claude in a bounded loop:
+
+```sh
+./shark.sh "find the latest ChatterPC version, check pve3, summarise GitHub issues"
+```
+
+Each iteration:
+1. Builds a fresh prompt: skill context + task + current state
+2. Runs `claude --print` with a hard `timeout 25s` shell wrapper
+3. If Claude times out → loop continues (it's expected — shark pattern means short turns)
+4. If Claude writes `.shark-done` → loop exits
+
+This is identical to the Ralph Loop pattern, but with the Shark Pattern as the prompt — Claude spawns remoras for slow work, keeps each turn under 25s, and the shell loop enforces the hard cut.
+
+### When to use the loop vs direct claude
+
+| Use case | Approach |
+|----------|----------|
+| Single fast task (<30s total) | `claude --print "..."` directly |
+| Multi-step task, slow tools | `./shark.sh "..."` loop |
+| CI/build watching | shark-exec (background + cron) |
+| Interactive chat | OpenClaw main session |
+
+### Environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SHARK_MAX_LOOPS` | `50` | Maximum iterations before giving up |
+| `SHARK_LOOP_TIMEOUT` | `25` | Per-turn timeout in seconds (hard kill) |
+
+### Completion protocol
+
+When Claude determines the task is done, it writes to `.shark-done`:
+```
+TASK_COMPLETE
+<brief summary of what was accomplished>
+```
+The loop detects this file and exits cleanly.
+
 ## References
 
 - Ralph Loop (sequential baseline): ghuntley.com/ralph/
