@@ -301,6 +301,12 @@ remoras **will** fail, timeout, or return garbage. Plan for it.
 - Fall back to sequential execution for the most critical task only
 - Do not spawn another full fleet — you're likely hitting a systemic issue
 
+### Forgetting to spawn the pilot fish (most common mistake)
+- You finished a fast inline task, a remora is still running, and you just... wait
+- **Symptom:** main agent idle, no pilot fish, time wasted
+- **Fix:** always ask after any remora completes early — "what can I pre-draft right now?"
+- Even if you have nothing obvious, draft the output structure, prepare questions, or outline the synthesis
+
 ### Pilot fish killed mid-run
 - Normal and expected — whatever it produced is still useful
 - Incorporate partial pilot fish output into synthesis
