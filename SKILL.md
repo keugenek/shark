@@ -347,7 +347,7 @@ Example: slowest remaining remora estimated at 30s → pilot fish timeout = min(
 - **Never** `process(action=poll, timeout > 20000)` in the main session — same reason
 - **Never** add `sleep` or wait loops in the main thread
 - **Always** set `runTimeoutSeconds` on remoras — unbound sub-agents are not sharks
-- **Max** 8 concurrent remoras — beyond this, context overhead exceeds the gain
+- **Max 8** concurrent remoras — beyond this, context overhead exceeds the gain
 - **Never stack pilot fish** — one at a time, no pilot fish spawning pilot fish
 - **Spawn tasks ≤ 3 sentences** — longer task descriptions need decomposition first
 
