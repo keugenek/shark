@@ -469,6 +469,14 @@ spawn pilot fish  → Claude subagent (pre-analysis, time-bounded)
 | File ops / SSH / shell | exec (background) |
 | Pre-analysis / drafting | Claude subagent (pilot fish) |
 
+## shark-exec Sub-Skill
+
+For slow shell commands (>5s), use the **shark-exec** companion skill:
+- Located at `shark-exec/SKILL.md` in this repo
+- Wraps any `exec` call in background + cron poller
+- Guarantees main turn completes in <30s even for 10-minute commands
+- Use it instead of inline exec whenever the command might block
+
 ## References
 
 - Ralph Loop (sequential baseline): ghuntley.com/ralph/
