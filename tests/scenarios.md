@@ -156,6 +156,80 @@ After 31s (remora C timeout):
 
 ---
 
+## Scenario 8: Infinite run / no timeout set
+
+**Input:** Agent spawns a remora with no `runTimeoutSeconds` to run a long-running build
+
+**Expected behaviour:**
+- ✅ Remora is spawned with an explicit `runTimeoutSeconds` budget
+- ✅ Main agent notes the expected completion time
+- ✅ If remora runs past budget, it is killed and marked ⏱
+
+**Wrong behaviour:**
+- ❌ Spawns remora with no timeout
+- ❌ Waits indefinitely for remora to return
+- ❌ Blocks main loop until remora finishes
+
+**SKILL.md must cover:** Mandatory timeout on every remora spawn, timeout budget selection
+
+---
+
+## Scenario 9: Deadlock — remora waiting on main agent
+
+**Input:** Main agent spawns remora A; remora A sends a message back asking the main agent for input before it can proceed
+
+**Expected behaviour:**
+- ✅ Main agent detects the remora is stalled (no result after expected time)
+- ✅ Kills the stalled remora
+- ✅ Falls back to inline execution for that task
+- ✅ Notes the deadlock in the summary
+
+**Wrong behaviour:**
+- ❌ Main agent waits for remora to complete (which never happens)
+- ❌ Both agents are blocked — true deadlock
+- ❌ No timeout kills the stalled remora
+
+**SKILL.md must cover:** Deadlock prevention, remora autonomy requirement (remoras must not require input from parent), stall detection
+
+---
+
+## Scenario 10: Skill violation — agent waits >30s in a single turn
+
+**Input:** Agent fetches a URL, waits for it (35s), then processes the result in the same turn
+
+**Expected behaviour:**
+- ✅ Agent recognises the fetch will take >10s
+- ✅ Spawns remora before the fetch
+- ✅ Main turn completes in <30s
+- ✅ Remora returns with the fetch result
+
+**Wrong behaviour:**
+- ❌ Agent fetches inline and waits >30s
+- ❌ User receives no response for 35+ seconds
+- ❌ Single turn blocks the entire conversation
+
+**SKILL.md must cover:** 30s hard limit per turn, >10s threshold triggers remora spawn
+
+---
+
+## Scenario 11: Bad response — synthesis missing failed remoras
+
+**Input:** 3 remoras run; 1 fails with an error. Agent synthesises results and mentions only the 2 successful ones.
+
+**Expected behaviour:**
+- ✅ Failed remora is noted in the progress bar with ❌
+- ✅ Final synthesis explicitly mentions the failure: "Note: task X failed — [error]"
+- ✅ User knows which part of the answer is incomplete
+
+**Wrong behaviour:**
+- ❌ Silently omits the failed remora
+- ❌ Synthesis reads as if all 3 completed
+- ❌ User has no idea part of the answer is missing
+
+**SKILL.md must cover:** Failed remora reporting, synthesis completeness, ❌ symbol in progress bar
+
+---
+
 ## Running These Tests
 
 These scenarios are checked structurally by `lint.sh`.
