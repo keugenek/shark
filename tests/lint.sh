@@ -91,6 +91,10 @@ check "Broken bash-style Windows env prefix absent" $((grep -Fq 'SHARK_MAX_LOOPS
 check "shark-exec path includes parent shark directory" $(grep -q '<workspace>/skills/shark/shark-exec/state/pending.json' shark-exec/SKILL.md && grep -q '<workspace>/skills/shark/shark-exec/scripts/poll-and-deliver.js' shark-exec/SKILL.md && echo 0 || echo 1)
 check "shark.sh uses built-in timeout watchdog" $(grep -q "run_claude_with_timeout" shark.sh && grep -q 'sleep "\$LOOP_TIMEOUT"' shark.sh && echo 0 || echo 1)
 check "shark.sh does not hard-depend on GNU timeout" $(grep -qv '| timeout ' shark.sh && echo 0 || echo 1)
+check "shark.sh runs claude from the shark skill directory" $(grep -q 'cd "\$SCRIPT_DIR"' shark.sh && echo 0 || echo 1)
+check "shark.sh validates loop env values" $(grep -q "validate_positive_int" shark.sh && grep -q 'SHARK_LOOP_TIMEOUT' shark.sh && echo 0 || echo 1)
+check "shark.ps1 validates loop env values" $(grep -q "Get-ValidatedPositiveInt" shark.ps1 && grep -q 'SHARK_LOOP_TIMEOUT' shark.ps1 && grep -q 'Max 29' shark.ps1 && echo 0 || echo 1)
+check "shark-loop docs mention timeout clamping" $(grep -q 'clamped to `29`' commands/shark-loop.md && grep -q 'clamped to `29`' commands/shark-loop/SKILL.md && echo 0 || echo 1)
 
 # --- Summary ---
 echo ""

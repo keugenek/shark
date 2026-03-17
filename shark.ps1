@@ -12,8 +12,32 @@ $ScriptDir   = Split-Path -Parent $MyInvocation.MyCommand.Path
 $SkillFile   = Join-Path $ScriptDir "SKILL.md"
 $StateFile   = Join-Path $ScriptDir "shark-exec\state\pending.json"
 $TimingsFile = Join-Path $ScriptDir "state\timings.jsonl"
-$MaxLoops    = if ($env:SHARK_MAX_LOOPS)   { [int]$env:SHARK_MAX_LOOPS }   else { 50 }
-$LoopTimeout = if ($env:SHARK_LOOP_TIMEOUT) { [int]$env:SHARK_LOOP_TIMEOUT } else { 25 }  # seconds per turn
+function Get-ValidatedPositiveInt {
+    param(
+        [string]$RawValue,
+        [string]$Name,
+        [int]$Default,
+        [int]$Max = [int]::MaxValue
+    )
+
+    $value = 0
+    if (-not [int]::TryParse($RawValue, [ref]$value) -or $value -le 0) {
+        if ($null -ne $RawValue -and $RawValue -ne "") {
+            Write-Host "[WARN] Invalid $Name='$RawValue' - using default $Default"
+        }
+        return $Default
+    }
+
+    if ($value -gt $Max) {
+        Write-Host "[WARN] $Name=$value exceeds the per-turn budget - clamping to $Max"
+        return $Max
+    }
+
+    return $value
+}
+
+$MaxLoops    = Get-ValidatedPositiveInt -RawValue $env:SHARK_MAX_LOOPS -Name "SHARK_MAX_LOOPS" -Default 50
+$LoopTimeout = Get-ValidatedPositiveInt -RawValue $env:SHARK_LOOP_TIMEOUT -Name "SHARK_LOOP_TIMEOUT" -Default 25 -Max 29  # seconds per turn
 
 # Ensure state dir exists
 $StateDir = Join-Path $ScriptDir "state"

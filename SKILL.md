@@ -499,7 +499,7 @@ Use `shark.sh` (or `shark.ps1` on Windows) to run Claude in a bounded loop:
 
 Each iteration:
 1. Builds a fresh prompt: skill context + task + current state
-2. Runs `claude --print` with a hard `timeout 25s` shell wrapper
+2. Runs `claude --print` from the shark skill directory, so `.shark-done` and `SHARK_LOG.md` always land in the right place
 3. If Claude times out → loop continues (it's expected — shark pattern means short turns)
 4. If Claude writes `.shark-done` → loop exits
 
@@ -519,7 +519,9 @@ This is identical to the Ralph Loop pattern, but with the Shark Pattern as the p
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `SHARK_MAX_LOOPS` | `50` | Maximum iterations before giving up |
-| `SHARK_LOOP_TIMEOUT` | `25` | Per-turn timeout in seconds (hard kill) |
+| `SHARK_LOOP_TIMEOUT` | `25` | Per-turn timeout in seconds (hard kill, clamped to 29) |
+
+Both loop runners validate these values. Invalid or non-positive values fall back to defaults instead of exploding mid-run.
 
 ### Completion protocol
 

@@ -26,4 +26,6 @@ On Linux/Mac, run:
 SHARK_MAX_LOOPS=<N> SHARK_LOOP_TIMEOUT=<S> bash "$SKILL_DIR/../shark.sh" "<TASK_DESCRIPTION>"
 ```
 
+The runner validates both values. Invalid or non-positive input falls back to defaults, and timeout is clamped to `29` seconds so one turn never overruns the Shark budget.
+
 Report the result when complete.

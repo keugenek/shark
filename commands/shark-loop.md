@@ -23,4 +23,6 @@ $env:SHARK_LOOP_TIMEOUT = "<S>"
 powershell.exe -ExecutionPolicy Bypass -File "$SKILL_DIR/shark.ps1" "<TASK_DESCRIPTION>"
 ```
 
+The runner validates both values. Invalid or non-positive input falls back to defaults, and timeout is clamped to `29` seconds so one turn never overruns the Shark budget.
+
 Report the result when complete.

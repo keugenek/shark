@@ -37,6 +37,34 @@ write_timing() {
     "$_ts" "$_loop" "$_elapsed" "$LOOP_TIMEOUT" "$_result" "$TASK_HASH" >> "$TIMINGS_FILE"
 }
 
+validate_positive_int() {
+  _value=$1
+  _name=$2
+  _fallback=$3
+
+  case "$_value" in
+    ''|*[!0-9]*)
+      echo "[WARN] Invalid $_name='$_value' - using default $_fallback" >&2
+      printf '%s' "$_fallback"
+      ;;
+    0)
+      echo "[WARN] Invalid $_name='$_value' - using default $_fallback" >&2
+      printf '%s' "$_fallback"
+      ;;
+    *)
+      printf '%s' "$_value"
+      ;;
+  esac
+}
+
+MAX_LOOPS=$(validate_positive_int "$MAX_LOOPS" "SHARK_MAX_LOOPS" "50")
+LOOP_TIMEOUT=$(validate_positive_int "$LOOP_TIMEOUT" "SHARK_LOOP_TIMEOUT" "25")
+
+if [ "$LOOP_TIMEOUT" -gt 29 ]; then
+  echo "[WARN] SHARK_LOOP_TIMEOUT=$LOOP_TIMEOUT exceeds the per-turn budget - clamping to 29" >&2
+  LOOP_TIMEOUT=29
+fi
+
 # Build the prompt: skill context + task + state awareness
 build_prompt() {
   cat "$SKILL_FILE"
@@ -66,7 +94,10 @@ run_claude_with_timeout() {
 
   rm -f "$_timeout_flag"
 
-  claude --print --permission-mode bypassPermissions < "$_prompt_file" &
+  (
+    cd "$SCRIPT_DIR" || exit 1
+    claude --print --permission-mode bypassPermissions < "$_prompt_file"
+  ) &
   _claude_pid=$!
 
   (
