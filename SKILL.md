@@ -129,11 +129,42 @@ Total: ~15s of thinking + max(tool times) in parallel
 
 ## Output Format
 
-When you apply the Shark Pattern, briefly announce it:
-
+### Announce on start
 > 🦈 **Shark mode** — spawning [N] sub-sharks for [tasks], continuing...
 
-Then proceed immediately without waiting.
+### Progress bar (chat-friendly, Unicode only — no images needed)
+
+Use this format after each sub-shark or pilot fish completes. Works in Telegram, Discord, Signal, iMessage — anywhere.
+
+```
+🦈 3 sub-sharks · 1 pilot fish
+
+◉ [A] task name here    ████████████ ✅ 9s
+◉ [B] task name here    ████████████ ✅ 33s
+○ [C] task name here    ░░░░░░░░░░░░ pending
+◈ [P] Pilot fish        ██████░░░░░░ ~14s left
+
+↳ continuing...
+```
+
+**Symbols:**
+- `◉` = sub-shark (completed)
+- `○` = sub-shark (pending)
+- `⊙` = sub-shark (running)
+- `◈` = pilot fish (time-bounded)
+- `████████████` = done bar (12 blocks)
+- `██████░░░░░░` = partial (filled = elapsed / total budget)
+- `░░░░░░░░░░░░` = not started
+
+**Progress fill:** `filled = round(elapsed / timeout * 12)` blocks of `█`, remainder `░`
+
+Only post an update when something changes (sub-shark completes or pilot fish starts/ends). Don't spam — one update per event.
+
+### Final synthesis
+After all sub-sharks done:
+> 🦈 **All fins in** — synthesising [N] results + pilot draft
+
+Then deliver the report.
 
 ## The Pilot Fish Sub-Pattern
 
@@ -194,8 +225,65 @@ sessions_spawn({
 - **Always** spawn for operations with unknown or high latency
 - **Max** 8 concurrent sub-sharks (avoid context explosion)
 
+## Compatibility — Claude, Codex, Gemini CLI
+
+The Shark Pattern is **runtime-agnostic**. Sub-sharks can be any agent type.
+
+### OpenClaw (Claude / Sonnet / Opus)
+```
+sessions_spawn({
+  task: "...",
+  mode: "run",
+  runtime: "subagent",
+  runTimeoutSeconds: 30   // hard cap for pilot fish
+})
+```
+
+### Codex
+```
+sessions_spawn({
+  task: "...",
+  runtime: "acp",
+  agentId: "codex",
+  mode: "run",
+  runTimeoutSeconds: 30
+})
+```
+
+### Gemini CLI
+Gemini CLI is a local process — spawn via exec with a timeout:
+```
+exec({
+  command: "gemini -p \"task description here\"",
+  timeout: 30,            // hard cap in seconds
+  background: true,       // don't block main agent
+  yieldMs: 500            // check back quickly
+})
+```
+For Gemini sub-tasks, use `exec` with `timeout` + `background: true` rather than `sessions_spawn`. Treat the process handle the same way — continue working, collect output when it lands.
+
+### Mixed fleets
+You can mix runtimes in the same shark run:
+```
+spawn sub-shark A → Codex (coding task)
+spawn sub-shark B → Gemini (web search / analysis)
+spawn sub-shark C → Claude subagent (reasoning)
+spawn pilot fish  → Claude subagent (pre-analysis, time-bounded)
+```
+
+### Which to use when
+
+| Task type | Best runtime |
+|-----------|-------------|
+| Code generation / editing | Codex |
+| Web search / summarise | Gemini CLI |
+| Multi-step reasoning | Claude subagent |
+| File ops / SSH / shell | exec (background) |
+| Pre-analysis / drafting | Claude subagent (pilot fish) |
+
 ## References
 
 - Ralph Loop (sequential baseline): ghuntley.com/ralph/
 - OpenClaw sessions_spawn docs: spawn with `mode: "run"`, `runtime: "subagent"`
+- Gemini CLI: `npm install -g @google/gemini-cli`
 - The name: sharks use ram ventilation — they literally die if they stop moving
