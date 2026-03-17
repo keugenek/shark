@@ -230,6 +230,48 @@ After 31s (remora C timeout):
 
 ---
 
+## Scenario 12: shark-exec — background exec happy path
+
+**Input:** Agent needs to run `gh run watch 12345` (expected ~45s)
+
+**Expected behaviour:**
+- ✅ Reads shark-exec/SKILL.md before running
+- ✅ Sends immediate ack: "⏳ CI: run #12345 — watching in background (max 120s)..."
+- ✅ Calls exec with background: true, yieldMs: 500
+- ✅ Writes job to shark-exec/state/pending.json with real Date.now() timestamp
+- ✅ Creates cron job (everyMs: 15000), writes cronJobId back to pending.json
+- ✅ Main turn completes in <30s
+- ✅ Cron delivers result to user when done
+
+**Wrong behaviour:**
+- ❌ Runs exec inline without background:true
+- ❌ Uses hardcoded startedAt timestamp
+- ❌ Forgets to write cronJobId back to state
+- ❌ Creates multiple cron jobs for multiple parallel commands
+
+**SKILL.md must cover:** shark-exec protocol, state file format, cronJobId write-back
+
+---
+
+## Scenario 13: shark-exec — process exits before first poll
+
+**Input:** Agent runs a command that finishes in 5s (faster than the 15s cron interval)
+
+**Expected behaviour:**
+- ✅ Exec result arrives as a system event in the main session
+- ✅ Agent reads the system event output and delivers it directly to user
+- ✅ Removes the job from pending.json
+- ✅ Removes the cron job (nothing to poll)
+
+**Wrong behaviour:**
+- ❌ Cron fires, gets "session not found", sends confusing error to user
+- ❌ Agent ignores the system event and waits for cron
+- ❌ Leaves orphaned cron job running after job completes
+
+**SKILL.md must cover:** Fast-exit handling, system event delivery path
+
+---
+
 ## Running These Tests
 
 These scenarios are checked structurally by `lint.sh`.

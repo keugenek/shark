@@ -78,6 +78,8 @@ jobs:
           check_covered "Scenario 5: degraded mode covered" "degraded"
           check_covered "Scenario 6: pilot fish partial covered" "partial"
           check_covered "Scenario 7: progress bar format covered" "████"
+          check_covered "Scenario 12: shark-exec happy path" "shark-exec"
+          check_covered "Scenario 13: shark-exec fast-exit" "system event\|fast.exit\|already completed"
           
           echo ""
           if [ "$FAIL" -gt 0 ]; then
