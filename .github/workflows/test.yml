@@ -1,0 +1,88 @@
+name: Skill Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: 🦈 Structural Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run lint tests
+        run: |
+          chmod +x tests/lint.sh
+          bash tests/lint.sh
+
+  validate-frontmatter:
+    name: 📋 YAML Frontmatter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install yq
+        run: sudo snap install yq
+
+      - name: Validate SKILL.md frontmatter
+        run: |
+          # Extract frontmatter between first --- and second ---
+          FRONTMATTER=$(awk '/^---/{n++; if(n==2) exit} n==1 && !/^---/' SKILL.md)
+          echo "$FRONTMATTER" | yq e '.' -
+          
+          # Check required fields
+          NAME=$(echo "$FRONTMATTER" | yq e '.name' -)
+          VERSION=$(echo "$FRONTMATTER" | yq e '.version' -)
+          SUMMARY=$(echo "$FRONTMATTER" | yq e '.summary' -)
+          
+          echo "name: $NAME"
+          echo "version: $VERSION"
+          echo "summary: $SUMMARY"
+          
+          [ "$NAME" != "null" ] || (echo "❌ Missing: name" && exit 1)
+          [ "$VERSION" != "null" ] || (echo "❌ Missing: version" && exit 1)
+          [ "$SUMMARY" != "null" ] || (echo "❌ Missing: summary" && exit 1)
+          
+          echo "✅ Frontmatter valid"
+
+  check-scenarios:
+    name: 🎬 Scenario Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check all scenarios are addressed in SKILL.md
+        run: |
+          FAIL=0
+          
+          check_covered() {
+            local desc="$1"
+            local pattern="$2"
+            if grep -qi "$pattern" SKILL.md; then
+              echo "  ✅ $desc"
+            else
+              echo "  ❌ $desc — pattern '$pattern' not found in SKILL.md"
+              FAIL=$((FAIL+1))
+            fi
+          }
+          
+          echo "🎬 Scenario coverage checks"
+          echo "================================"
+          check_covered "Scenario 1: parallel spawn covered" "parallel"
+          check_covered "Scenario 2: fast task inline covered" "inline"
+          check_covered "Scenario 3: timeout handling covered" "timeout"
+          check_covered "Scenario 4: no nested remoras covered" "nested"
+          check_covered "Scenario 5: degraded mode covered" "degraded"
+          check_covered "Scenario 6: pilot fish partial covered" "partial"
+          check_covered "Scenario 7: progress bar format covered" "████"
+          
+          echo ""
+          if [ "$FAIL" -gt 0 ]; then
+            echo "❌ $FAIL scenario(s) not covered in SKILL.md"
+            exit 1
+          else
+            echo "✅ All scenarios covered"
+          fi
