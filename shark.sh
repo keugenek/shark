@@ -1,24 +1,41 @@
 #!/usr/bin/env sh
-# 🦈 shark.sh — Ralph-style loop enforcer for the Shark Pattern
+# shark.sh — Ralph-style loop enforcer for the Shark Pattern
 # Each iteration = one bounded Claude turn. Never blocks >30s per loop.
 # Usage: ./shark.sh "your task description"
 #   or:  ./shark.sh  (reads task from SHARK_TASK.md if exists)
 
-PROMPT_FILE="$(dirname "$0")/SHARK_PROMPT.md"
-SKILL_FILE="$(dirname "$0")/SKILL.md"
-STATE_FILE="$(dirname "$0")/shark-exec/state/pending.json"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SKILL_FILE="$SCRIPT_DIR/SKILL.md"
+STATE_FILE="$SCRIPT_DIR/shark-exec/state/pending.json"
+TIMINGS_FILE="$SCRIPT_DIR/state/timings.jsonl"
 MAX_LOOPS=${SHARK_MAX_LOOPS:-50}
 LOOP_TIMEOUT=${SHARK_LOOP_TIMEOUT:-25}  # seconds per turn (under 30s hard limit)
 
+# Ensure state dir exists
+mkdir -p "$SCRIPT_DIR/state"
+
 if [ -n "$1" ]; then
   TASK="$*"
-elif [ -f "SHARK_TASK.md" ]; then
-  TASK=$(cat SHARK_TASK.md)
+elif [ -f "$SCRIPT_DIR/SHARK_TASK.md" ]; then
+  TASK=$(cat "$SCRIPT_DIR/SHARK_TASK.md")
 else
   echo "Usage: ./shark.sh 'task description'"
   echo "  or create SHARK_TASK.md with your task"
   exit 1
 fi
+
+# Task hash for correlating loops within a run
+TASK_HASH=$(printf '%s%s' "$TASK" "$(date +%Y%m%d%H%M%S)" | md5sum 2>/dev/null | cut -c1-8 || printf '%s%s' "$TASK" "$(date +%Y%m%d%H%M%S)" | md5 2>/dev/null | cut -c1-8 || echo "nohash")
+
+# Write a timing entry to state/timings.jsonl
+write_timing() {
+  _loop=$1
+  _elapsed=$2
+  _result=$3
+  _ts=$(date +%s)
+  printf '{"ts":%s,"loop":%s,"elapsed_s":%s,"timeout_s":%s,"result":"%s","task_hash":"%s"}\n' \
+    "$_ts" "$_loop" "$_elapsed" "$LOOP_TIMEOUT" "$_result" "$TASK_HASH" >> "$TIMINGS_FILE"
+}
 
 # Build the prompt: skill context + task + state awareness
 build_prompt() {
@@ -44,32 +61,43 @@ build_prompt() {
 }
 
 CURRENT_LOOP=0
-rm -f .shark-done
+DONE_FILE="$SCRIPT_DIR/.shark-done"
+rm -f "$DONE_FILE"
 
-echo "🦈 Shark loop starting — task: $TASK"
-echo "   Max loops: $MAX_LOOPS | Timeout per turn: ${LOOP_TIMEOUT}s"
+echo "[SHARK] Shark loop starting - task: $TASK"
+echo "   Max loops: $MAX_LOOPS | Timeout per turn: ${LOOP_TIMEOUT}s | Run: $TASK_HASH"
 echo ""
 
 while [ $CURRENT_LOOP -lt $MAX_LOOPS ]; do
   CURRENT_LOOP=$((CURRENT_LOOP + 1))
-  echo "🦈 Loop $CURRENT_LOOP/$MAX_LOOPS..."
+  echo "[SHARK] Loop $CURRENT_LOOP/$MAX_LOOPS..."
+
+  LOOP_START=$(date +%s)
 
   # Run claude with hard timeout — THIS is the 30s enforcement
   build_prompt | timeout ${LOOP_TIMEOUT}s claude --print --permission-mode bypassPermissions
   EXIT_CODE=$?
 
+  LOOP_END=$(date +%s)
+  ELAPSED=$((LOOP_END - LOOP_START))
+
   if [ $EXIT_CODE -eq 124 ]; then
-    echo "⏱ Turn $CURRENT_LOOP timed out at ${LOOP_TIMEOUT}s — looping back"
+    echo "[TIMEOUT] Turn $CURRENT_LOOP timed out at ${LOOP_TIMEOUT}s (${ELAPSED}s elapsed) - looping back"
+    write_timing "$CURRENT_LOOP" "$ELAPSED" "timeout"
+  else
+    echo "[TIMING] Turn $CURRENT_LOOP completed in ${ELAPSED}s"
+    write_timing "$CURRENT_LOOP" "$ELAPSED" "ok"
   fi
 
   # Check if task is done
-  if [ -f ".shark-done" ]; then
+  if [ -f "$DONE_FILE" ]; then
+    write_timing "$CURRENT_LOOP" "$ELAPSED" "done"
     echo ""
-    echo "✅ Task complete after $CURRENT_LOOP loops"
-    cat .shark-done
+    echo "[DONE] Task complete after $CURRENT_LOOP loops"
+    cat "$DONE_FILE"
     exit 0
   fi
 done
 
-echo "⚠️ Max loops ($MAX_LOOPS) reached without completion"
+echo "[WARN] Max loops ($MAX_LOOPS) reached without completion"
 exit 1
