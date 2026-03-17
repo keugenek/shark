@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// poll-and-deliver.js — OpenClaw adapter for shark-exec
+// For other runtimes, implement equivalent polling logic using your platform's APIs.
+// See shark-exec/SKILL.md "Runtime Adapters" for Claude Code, Codex, Cursor equivalents.
+
 /**
  * shark-exec: poll-and-deliver.js
  *
