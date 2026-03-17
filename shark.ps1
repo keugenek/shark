@@ -17,8 +17,8 @@ $LoopTimeout = if ($env:SHARK_LOOP_TIMEOUT) { [int]$env:SHARK_LOOP_TIMEOUT } els
 # Resolve task
 if ($TaskArgs -and $TaskArgs.Count -gt 0) {
     $Task = $TaskArgs -join " "
-} elseif (Test-Path "SHARK_TASK.md") {
-    $Task = Get-Content "SHARK_TASK.md" -Raw
+} elseif (Test-Path (Join-Path $ScriptDir "SHARK_TASK.md")) {
+    $Task = Get-Content (Join-Path $ScriptDir "SHARK_TASK.md") -Raw
 } else {
     Write-Host "Usage: .\shark.ps1 'task description'"
     Write-Host "  or create SHARK_TASK.md with your task"
@@ -51,9 +51,10 @@ function Build-Prompt {
 }
 
 # Clean up any previous done marker
-if (Test-Path ".shark-done") { Remove-Item ".shark-done" -Force }
+$DoneFile = Join-Path $ScriptDir ".shark-done"
+if (Test-Path $DoneFile) { Remove-Item $DoneFile -Force }
 
-Write-Host "🦈 Shark loop starting — task: $Task"
+Write-Host "[SHARK] Shark loop starting - task: $Task"
 Write-Host "   Max loops: $MaxLoops | Timeout per turn: ${LoopTimeout}s"
 Write-Host ""
 
@@ -61,7 +62,7 @@ $CurrentLoop = 0
 
 while ($CurrentLoop -lt $MaxLoops) {
     $CurrentLoop++
-    Write-Host "🦈 Loop $CurrentLoop/$MaxLoops..."
+    Write-Host "[SHARK] Loop $CurrentLoop/$MaxLoops..."
 
     $Prompt = Build-Prompt -CurrentLoop $CurrentLoop
 
@@ -70,10 +71,12 @@ while ($CurrentLoop -lt $MaxLoops) {
     [System.IO.File]::WriteAllText($TmpPrompt, $Prompt, [System.Text.Encoding]::UTF8)
 
     # Run claude via a background job so we can enforce a hard timeout
+    $DoneFile = Join-Path $ScriptDir ".shark-done"
     $Job = Start-Job -ScriptBlock {
-        param($promptFile)
+        param($promptFile, $workDir)
+        Set-Location $workDir
         Get-Content $promptFile -Raw | claude --print --permission-mode bypassPermissions
-    } -ArgumentList $TmpPrompt
+    } -ArgumentList $TmpPrompt, $ScriptDir
 
     # Wait with hard timeout
     $Completed = Wait-Job -Job $Job -Timeout $LoopTimeout
@@ -82,7 +85,7 @@ while ($CurrentLoop -lt $MaxLoops) {
         # Timed out — kill the job
         Stop-Job  -Job $Job
         Remove-Job -Job $Job -Force
-        Write-Host "⏱ Turn $CurrentLoop timed out at ${LoopTimeout}s — looping back"
+        Write-Host "[TIMEOUT] Turn $CurrentLoop timed out at ${LoopTimeout}s - looping back"
     } else {
         # Collect output
         Receive-Job -Job $Job
@@ -93,13 +96,13 @@ while ($CurrentLoop -lt $MaxLoops) {
     if (Test-Path $TmpPrompt) { Remove-Item $TmpPrompt -Force }
 
     # Check if task is done
-    if (Test-Path ".shark-done") {
+    if (Test-Path $DoneFile) {
         Write-Host ""
-        Write-Host "✅ Task complete after $CurrentLoop loops"
-        Get-Content ".shark-done"
+        Write-Host "[DONE] Task complete after $CurrentLoop loops"
+        Get-Content $DoneFile
         exit 0
     }
 }
 
-Write-Host "⚠️ Max loops ($MaxLoops) reached without completion"
+Write-Host "[WARN] Max loops ($MaxLoops) reached without completion"
 exit 1
