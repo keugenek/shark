@@ -8,7 +8,7 @@ The **Shark Pattern** is a non-blocking execution model for AI coding agents.
 
 **The rule:** Every LLM turn completes in under 30 seconds. Slow operations get spawned as sub-agents. The main agent never waits.
 
-**The Pilot Fish sub-pattern:** When a sub-shark finishes early and others are still running, spawn a time-bounded pilot fish to pre-analyse partial results — killed when the last primary completes.
+**The Pilot Fish sub-pattern:** When a remora finishes early and others are still running, spawn a time-bounded pilot fish to pre-analyse partial results — killed when the last primary completes.
 
 ---
 
@@ -129,7 +129,7 @@ Once installed, tell your agent:
 ### Progress output (chat-friendly)
 
 ```
-🦈 3 sub-sharks · 1 pilot fish
+🦈 3 remoras · 1 pilot fish
 
 ⊙ [A] E2E tests         ████████████ ✅ 39s
 ⊙ [B] GitHub PRs        ████████████ ✅ 33s
@@ -153,8 +153,8 @@ think → spawn(slow tool A) → think
 
 ### 🐟 Pilot Fish — time-bounded pre-analysis
 ```
-sub-shark A ──► done (early)
-sub-shark B ───────────────────────► done
+remora A ──► done (early)
+remora B ───────────────────────► done
               ↓
               spawn pilot-fish(A's result, timeout=est_remaining)
               pilot-fish: pre-validate, draft structure, flag gaps...
@@ -180,10 +180,10 @@ sub-shark B ──────────────────────�
 | Operation | Action |
 |-----------|--------|
 | File read < 2s | Inline |
-| Web search 5-30s | Spawn sub-shark |
-| SSH command 10-120s | Spawn sub-shark |
-| Build/test 30-300s | Spawn sub-shark |
-| Coding agent 60-600s | Spawn sub-shark |
+| Web search 5-30s | Spawn remora |
+| SSH command 10-120s | Spawn remora |
+| Build/test 30-300s | Spawn remora |
+| Coding agent 60-600s | Spawn remora |
 | Pre-analysis (pilot fish) | Spawn with `runTimeoutSeconds` |
 
 ---
@@ -201,3 +201,4 @@ sub-shark B ──────────────────────�
 ## License
 
 MIT
+

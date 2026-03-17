@@ -32,9 +32,9 @@ Ralph Loop was a huge improvement. Shark is the next step.
 The Shark rule:
 
 ⏱️ Every LLM turn: max 30 seconds
-🐟 Slow tool? Spawn a sub-shark
+🐟 Slow tool? Spawn a remora
 🏊 Main agent keeps swimming
-📬 Sub-sharks push results back async
+📬 remoras push results back async
 
 ```
 think → spawn(web search) → think
@@ -105,7 +105,7 @@ Sharks use ram ventilation — water only passes through their gills when they'r
 [credit Geoffrey, explain what it solved — sequential iteration is better than nothing]
 
 ### The Shark Pattern Is Step 2
-[explain the non-blocking model, sub-shark spawning, timing budget]
+[explain the non-blocking model, remora spawning, timing budget]
 
 ### Show the Code
 [sessions_spawn examples, timing budget table]
@@ -115,3 +115,4 @@ Sharks use ram ventilation — water only passes through their gills when they'r
 
 ### Get It
 [ClawHub install command, GitHub link]
+

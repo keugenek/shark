@@ -2,7 +2,7 @@
 name: shark
 slug: shark
 version: 0.1.0
-summary: "The Shark Pattern — non-blocking agent execution. Spawn sub-sharks for slow tools, keep the main agent swimming. A shark that stops swimming dies."
+summary: "The Shark Pattern — non-blocking agent execution. Spawn remoras for slow tools, keep the main agent swimming. A shark that stops swimming dies."
 tags: [async, performance, subagents, non-blocking, concurrency, patterns]
 homepage: https://github.com/keugenek/shark-pattern
 author: keugenek
@@ -28,9 +28,9 @@ Trigger this skill when the user says:
 **Every LLM turn must complete in under 30 seconds.**
 
 If any operation would take longer:
-1. Spawn a sub-shark (`sessions_spawn` with `mode: "run"`)
+1. Spawn a remora (`sessions_spawn` with `mode: "run"`)
 2. Continue reasoning immediately
-3. Incorporate sub-shark results when they arrive
+3. Incorporate remora results when they arrive
 
 You are **never** in I/O wait. You are **always** reasoning about something.
 
@@ -43,9 +43,9 @@ think → call slow tool → WAIT 60s → think → call slow tool → WAIT 45s 
 
 ### Good (Shark-style non-blocking):
 ```
-think → spawn sub-shark(slow tool) → think about something else
-     → spawn sub-shark(another tool) → synthesize partial results
-     → receive sub-shark result → incorporate → swim on
+think → spawn remora(slow tool) → think about something else
+     → spawn remora(another tool) → synthesize partial results
+     → receive remora result → incorporate → swim on
 ```
 
 ## Implementation
@@ -69,7 +69,7 @@ Fast tools (run inline, never spawn):
 - String manipulation
 - Memory lookups
 
-### 2. Spawn sub-sharks
+### 2. Spawn remoras
 
 ```
 sessions_spawn({
@@ -80,7 +80,7 @@ sessions_spawn({
 })
 ```
 
-Spawn multiple sub-sharks in parallel when possible — don't serialize unless there's a data dependency.
+Spawn multiple remoras in parallel when possible — don't serialize unless there's a data dependency.
 
 ### 3. Keep the main fin moving
 
@@ -92,7 +92,7 @@ After spawning, immediately continue:
 
 ### 4. Incorporate results
 
-When sub-shark results arrive, weave them in and continue. Never re-do work a sub-shark already completed.
+When remora results arrive, weave them in and continue. Never re-do work a remora already completed.
 
 ## Timing Budget
 
@@ -130,14 +130,14 @@ Total: ~15s of thinking + max(tool times) in parallel
 ## Output Format
 
 ### Announce on start
-> 🦈 **Shark mode** — spawning [N] sub-sharks for [tasks], continuing...
+> 🦈 **Shark mode** — spawning [N] remoras for [tasks], continuing...
 
 ### Progress bar (chat-friendly, Unicode only — no images needed)
 
-Use this format after each sub-shark or pilot fish completes. Works in Telegram, Discord, Signal, iMessage — anywhere.
+Use this format after each remora or pilot fish completes. Works in Telegram, Discord, Signal, iMessage — anywhere.
 
 ```
-🦈 3 sub-sharks · 1 pilot fish
+🦈 3 remoras · 1 pilot fish
 
 ◉ [A] task name here    ████████████ ✅ 9s
 ◉ [B] task name here    ████████████ ✅ 33s
@@ -148,9 +148,9 @@ Use this format after each sub-shark or pilot fish completes. Works in Telegram,
 ```
 
 **Symbols:**
-- `◉` = sub-shark (completed)
-- `○` = sub-shark (pending)
-- `⊙` = sub-shark (running)
+- `◉` = remora (completed)
+- `○` = remora (pending)
+- `⊙` = remora (running)
 - `◈` = pilot fish (time-bounded)
 - `████████████` = done bar (12 blocks)
 - `██████░░░░░░` = partial (filled = elapsed / total budget)
@@ -158,10 +158,10 @@ Use this format after each sub-shark or pilot fish completes. Works in Telegram,
 
 **Progress fill:** `filled = round(elapsed / timeout * 12)` blocks of `█`, remainder `░`
 
-Only post an update when something changes (sub-shark completes or pilot fish starts/ends). Don't spam — one update per event.
+Only post an update when something changes (remora completes or pilot fish starts/ends). Don't spam — one update per event.
 
 ### Final synthesis
-After all sub-sharks done:
+After all remoras done:
 > 🦈 **All fins in** — synthesising [N] results + pilot draft
 
 Then deliver the report.
@@ -170,18 +170,18 @@ Then deliver the report.
 
 > *Pilot fish swim alongside sharks doing prep work. When you have idle time, use it.*
 
-When one sub-shark returns early and others are still running:
+When one remora returns early and others are still running:
 
 1. **Spawn a pilot fish** — a time-bounded analysis sub-agent
 2. **Give it only the partial results so far** + a hard timeout equal to the estimated remaining wait
 3. **Let it pre-validate, pre-analyse, find patterns, draft conclusions**
-4. **Kill it** (or it self-terminates) when the last primary sub-shark completes
+4. **Kill it** (or it self-terminates) when the last primary remora completes
 5. **Incorporate** whatever the pilot fish produced into the final synthesis
 
 ```
-sub-shark A ──────► result (early)
-sub-shark B ────────────────────────────► result
-sub-shark C ──────────────────────────────────► result
+remora A ──────► result (early)
+remora B ────────────────────────────► result
+remora C ──────────────────────────────────► result
 
 main:   spawn A, B, C
         A done → spawn pilot-fish(A's result, timeout=est_remaining)
@@ -201,12 +201,12 @@ main:   spawn A, B, C
 ### Example
 
 ```
-// Sub-sharks A (fast) and B (slow) both spawned
+// remoras A (fast) and B (slow) both spawned
 // A finishes in 10s, B will take another 30s
 
 // Spawn pilot fish with 25s budget:
 sessions_spawn({
-  task: "Pre-analyse these results from sub-shark A. 
+  task: "Pre-analyse these results from remora A. 
          Validate the data, note any gaps, draft the structure 
          of the final report. Stop after 25 seconds.",
   runTimeoutSeconds: 25,
@@ -223,10 +223,10 @@ Before every tool call, ask: **"Will this take more than 10 seconds?"**
 
 ```
 Estimated time < 10s?  → run inline
-Estimated time ≥ 10s?  → spawn sub-shark
-Unknown latency?        → spawn sub-shark (assume slow)
-Data dependency on another sub-shark? → wait, then inline
-Already at 8 sub-sharks? → queue, don't stack
+Estimated time ≥ 10s?  → spawn remora
+Unknown latency?        → spawn remora (assume slow)
+Data dependency on another remora? → wait, then inline
+Already at 8 remoras? → queue, don't stack
 ```
 
 **Always spawn:** web search/fetch, SSH, build/test, coding agents, CI triggers, API calls with unknown latency
@@ -236,9 +236,9 @@ Already at 8 sub-sharks? → queue, don't stack
 
 ## Error Handling
 
-Sub-sharks **will** fail, timeout, or return garbage. Plan for it.
+remoras **will** fail, timeout, or return garbage. Plan for it.
 
-### Sub-shark timeout
+### remora timeout
 ```
 ◉ [A] task    ████████████ ⏱ 30s [timeout]
 ```
@@ -247,7 +247,7 @@ Sub-sharks **will** fail, timeout, or return garbage. Plan for it.
 - Note the gap in synthesis: "A timed out — data may be incomplete"
 - If A's result is critical, spawn a smaller-scoped follow-up shark
 
-### Sub-shark crash / error
+### remora crash / error
 ```
 ◉ [A] task    ████████████ ❌ [error: connection refused]
 ```
@@ -257,11 +257,11 @@ Sub-sharks **will** fail, timeout, or return garbage. Plan for it.
 - Optionally file an issue / alert if it's infrastructure
 
 ### Partial results (most common)
-- Most useful — a sub-shark that timed out at 28s has 28s of work in it
+- Most useful — a remora that timed out at 28s has 28s of work in it
 - Always check if partial output is usable before discarding
 - Progress bar: `⏱` = timeout with partial, `❌` = hard error with nothing
 
-### All sub-sharks failed
+### All remoras failed
 - Fall back to sequential execution for the most critical task only
 - Do not spawn another full fleet — you're likely hitting a systemic issue
 
@@ -274,9 +274,9 @@ Sub-sharks **will** fail, timeout, or return garbage. Plan for it.
 
 ## Terminology
 
-- **Sub-shark** = a `sessions_spawn` call with `mode: "run"`, `runtime: "subagent"`, and `runTimeoutSeconds` set. A sub-shark is specifically a *timed* sub-agent — untimed subagents are not sub-sharks.
-- **Pilot fish** = a sub-shark spawned *after* another sub-shark completes, with a short timeout sized to the estimated remaining wait. Purpose: pre-analysis only, never primary work.
-- **Fleet** = the full set of sub-sharks spawned for one task
+- **remora** = a `sessions_spawn` call with `mode: "run"`, `runtime: "subagent"`, and `runTimeoutSeconds` set. A remora is specifically a *timed* sub-agent — untimed subagents are not remoras.
+- **Pilot fish** = a remora spawned *after* another remora completes, with a short timeout sized to the estimated remaining wait. Purpose: pre-analysis only, never primary work.
+- **Fleet** = the full set of remoras spawned for one task
 - **Fin moving** = the main agent is doing useful work (not waiting)
 
 ### `runTimeoutSeconds` — confirmed real
@@ -290,11 +290,11 @@ Verified against OpenClaw source: `runTimeoutSeconds: z.number().int().min(0).op
 pilotFishTimeout = min(estimatedRemaining * 0.8, 25)
 ```
 
-- `estimatedRemaining` = how long you think the slowest remaining sub-shark will take
+- `estimatedRemaining` = how long you think the slowest remaining remora will take
 - Cap at 25s so pilot fish always finishes before the main synthesis turn
 - If you don't know: use 20s as default
 
-Example: slowest remaining sub-shark estimated at 30s → pilot fish timeout = min(24, 25) = 24s
+Example: slowest remaining remora estimated at 30s → pilot fish timeout = min(24, 25) = 24s
 
 ---
 
@@ -303,8 +303,8 @@ Example: slowest remaining sub-shark estimated at 30s → pilot fish timeout = m
 - **Never** use `yieldMs` > 30000 in exec calls — this holds the main turn hostage
 - **Never** `process(action=poll, timeout > 20000)` in the main session — same reason
 - **Never** add `sleep` or wait loops in the main thread
-- **Always** set `runTimeoutSeconds` on sub-sharks — unbound sub-agents are not sharks
-- **Max** 8 concurrent sub-sharks — beyond this, context overhead exceeds the gain
+- **Always** set `runTimeoutSeconds` on remoras — unbound sub-agents are not sharks
+- **Max** 8 concurrent remoras — beyond this, context overhead exceeds the gain
 - **Never stack pilot fish** — one at a time, no pilot fish spawning pilot fish
 - **Spawn tasks ≤ 3 sentences** — longer task descriptions need decomposition first
 
@@ -347,7 +347,7 @@ Wrap the CLI invocation with OS-level `timeout` / `Start-Process -Timeout`.
 sessions_spawn({
   task: "pre-analyse partial results, draft structure, flag gaps",
   mode: "run",
-  runTimeoutSeconds: estimatedRemainingMs / 1000,  // die before the last sub-shark
+  runTimeoutSeconds: estimatedRemainingMs / 1000,  // die before the last remora
 })
 ```
 Set it to *slightly less* than your estimated remaining wait — so the pilot fish always finishes before you need to synthesise.
@@ -368,11 +368,11 @@ You can't hard-kill an LLM mid-turn, but you can:
 2. **Use `thinking: "none"`** for fast sub-tasks that don't need deep reasoning
 3. **Break large tasks** into smaller shark-able chunks upfront
 
-Rule of thumb: if a task description is >3 sentences, it probably needs to be split into sub-sharks.
+Rule of thumb: if a task description is >3 sentences, it probably needs to be split into remoras.
 
 ## Compatibility — Claude, Codex, Gemini CLI
 
-The Shark Pattern is **runtime-agnostic**. Sub-sharks can be any agent type.
+The Shark Pattern is **runtime-agnostic**. remoras can be any agent type.
 
 ### OpenClaw (Claude / Sonnet / Opus)
 ```
@@ -410,9 +410,9 @@ For Gemini sub-tasks, use `exec` with `timeout` + `background: true` rather than
 ### Mixed fleets
 You can mix runtimes in the same shark run:
 ```
-spawn sub-shark A → Codex (coding task)
-spawn sub-shark B → Gemini (web search / analysis)
-spawn sub-shark C → Claude subagent (reasoning)
+spawn remora A → Codex (coding task)
+spawn remora B → Gemini (web search / analysis)
+spawn remora C → Claude subagent (reasoning)
 spawn pilot fish  → Claude subagent (pre-analysis, time-bounded)
 ```
 
@@ -432,3 +432,4 @@ spawn pilot fish  → Claude subagent (pre-analysis, time-bounded)
 - OpenClaw sessions_spawn docs: spawn with `mode: "run"`, `runtime: "subagent"`
 - Gemini CLI: `npm install -g @google/gemini-cli`
 - The name: sharks use ram ventilation — they literally die if they stop moving
+
