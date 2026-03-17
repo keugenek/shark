@@ -1,7 +1,7 @@
 ---
 name: shark
 slug: shark
-version: 0.2.0
+version: 0.3.0
 summary: "The Shark Pattern — universal non-blocking execution for any AI coding agent. Spawn remoras for slow tools, keep the main agent swimming. Works with Claude Code, Codex, Gemini CLI, Cursor, Aider, OpenClaw."
 tags: [async, performance, subagents, non-blocking, concurrency, patterns, claude-code, codex, gemini, cursor, aider]
 homepage: https://github.com/keugenek/shark-pattern
@@ -519,6 +519,83 @@ TASK_COMPLETE
 <brief summary of what was accomplished>
 ```
 The loop detects this file and exits cleanly.
+
+## Commands
+
+When the user invokes these commands, follow the instructions for each.
+
+### `/shark <task>`
+
+Apply the Shark Pattern to the given task. Decompose, spawn remoras for slow ops, keep the main fin moving. Follow all rules in this SKILL.md.
+
+### `/shark-loop <task> [--max-loops N] [--timeout S]`
+
+Run the external shark loop enforcer. Execute:
+```
+SHARK_MAX_LOOPS=<N> SHARK_LOOP_TIMEOUT=<S> powershell.exe -ExecutionPolicy Bypass -File "<skill_dir>/shark.ps1" "<task>"
+```
+Defaults: `--max-loops 50`, `--timeout 25`. On Linux/Mac use `shark.sh` instead.
+
+### `/shark-status`
+
+Check current shark state:
+1. Read `<skill_dir>/shark-exec/state/pending.json` — report active background jobs (label, command, elapsed time, whether overdue past maxSeconds)
+2. If `.shark-done` exists, show its contents
+3. If `SHARK_LOG.md` exists, show the last 10 lines
+4. If nothing exists, report "No active shark jobs."
+
+### `/shark-clean`
+
+Remove shark state files: `.shark-done`, `SHARK_LOG.md`, `shark-exec/state/pending.json`. Report what was cleaned.
+
+### `/shark-autotune`
+
+Analyse timing history and recommend optimal settings.
+
+1. Read `<skill_dir>/state/timings.jsonl` — each line is:
+   ```json
+   {"ts":1710000000,"loop":1,"elapsed_s":12.3,"timeout_s":25,"result":"ok|timeout|done","task_hash":"abc123"}
+   ```
+
+2. If no data, report "No timing data yet. Run tasks with /shark first."
+
+3. Compute and report:
+   - **Total runs** (unique task_hash values) and **total loops**
+   - **Median turn time** (p50) and **p95 turn time**
+   - **Timeout rate** — % of turns with result "timeout"
+   - **Loops to completion** — median and max (count loops per task_hash that has a "done" entry)
+   - **Wasted headroom** — sum of (timeout_s - elapsed_s) for result "ok" turns
+   - **Optimal timeout** — p95 turn time + 3s buffer, rounded up to nearest 5s
+   - **Optimal max_loops** — p95 loops-to-completion + 2
+
+4. Show recommendations:
+   ```
+   Current:     SHARK_LOOP_TIMEOUT=25  SHARK_MAX_LOOPS=50
+   Recommended: SHARK_LOOP_TIMEOUT=N   SHARK_MAX_LOOPS=M
+
+   Rationale:
+   - p95 turn time is Xs, so timeout of Ns covers 95% with buffer
+   - p95 completion is N loops, so max_loops of M gives safe margin
+   - Timeout rate is X% — [>15%: consider splitting tasks | healthy]
+   - Wasted headroom: Xs total
+   ```
+
+5. If timeout rate > 30%: "Consider breaking tasks into smaller steps."
+6. If median turn time < 5s: "Most turns complete fast. Consider lowering timeout."
+
+## Timing Instrumentation
+
+Both `shark.sh` and `shark.ps1` automatically record per-loop timings to `state/timings.jsonl`. Each entry includes:
+- `ts` — Unix timestamp
+- `loop` — loop iteration number
+- `elapsed_s` — actual wall-clock seconds for this turn
+- `timeout_s` — configured timeout for this run
+- `result` — `"ok"` (completed), `"timeout"` (hit limit), `"done"` (task finished)
+- `task_hash` — 8-char hash correlating loops within a single run
+
+Use `/shark-autotune` to analyse this data and tune your settings.
+
+---
 
 ## References
 
