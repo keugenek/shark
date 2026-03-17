@@ -1,0 +1,120 @@
+name: 🤖 Codex Scenario Review
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'SKILL.md'
+      - 'tests/scenarios.md'
+
+jobs:
+  codex-review:
+    name: 🦈 AI Scenario Reviewer
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR diff for SKILL.md
+        id: diff
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD -- SKILL.md > skill_diff.txt
+          echo "lines=$(wc -l < skill_diff.txt)" >> $GITHUB_OUTPUT
+
+      - name: Run AI scenario review
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          python3 - << 'PYEOF'
+          import os, json, urllib.request
+
+          api_key = os.environ["OPENAI_API_KEY"]
+
+          skill_md = open("SKILL.md").read()
+          scenarios = open("tests/scenarios.md").read()
+          try:
+              diff = open("skill_diff.txt").read().strip() or "(no diff — new file)"
+          except Exception:
+              diff = "(no diff)"
+
+          prompt = f"""You are a code reviewer for an AI agent skill called the Shark Pattern.
+
+Your job: review whether the SKILL.md change correctly satisfies the behavioural scenarios in scenarios.md.
+
+## Scenarios spec (tests/scenarios.md)
+{scenarios}
+
+## Current SKILL.md (full file)
+{skill_md}
+
+## PR diff (changes to SKILL.md)
+{diff}
+
+## Your review task
+
+For each scenario (1-7), state:
+- PASS - the skill covers this correctly after this PR
+- PARTIAL - partially covered but something is missing
+- FAIL - not covered or broken by this change
+
+Format your response exactly as shown (keep the table):
+
+### Codex Scenario Review
+
+| Scenario | Status | Notes |
+|----------|--------|-------|
+| 1: Parallel research | PASS/PARTIAL/FAIL | brief note |
+| 2: Fast task inline | PASS/PARTIAL/FAIL | brief note |
+| 3: Timeout handling | PASS/PARTIAL/FAIL | brief note |
+| 4: No nested remoras | PASS/PARTIAL/FAIL | brief note |
+| 5: Degraded mode | PASS/PARTIAL/FAIL | brief note |
+| 6: Pilot fish partial | PASS/PARTIAL/FAIL | brief note |
+| 7: Progress bar | PASS/PARTIAL/FAIL | brief note |
+
+**Verdict:** APPROVED or REQUEST_CHANGES
+
+**Summary:** 2-3 sentences.
+
+**Issues found:** bullet list or None
+"""
+
+          payload = {
+              "model": "gpt-4o",
+              "messages": [{"role": "user", "content": prompt}],
+              "temperature": 0.2,
+              "max_tokens": 1500
+          }
+
+          req = urllib.request.Request(
+              "https://api.openai.com/v1/chat/completions",
+              data=json.dumps(payload).encode(),
+              headers={
+                  "Authorization": f"Bearer {api_key}",
+                  "Content-Type": "application/json"
+              }
+          )
+
+          try:
+              with urllib.request.urlopen(req, timeout=60) as resp:
+                  result = json.loads(resp.read())
+              review_body = result["choices"][0]["message"]["content"]
+          except Exception as e:
+              review_body = f"AI review failed: {e}\n\nManual review required."
+
+          with open("review_body.txt", "w") as f:
+              f.write(review_body)
+
+          print(review_body)
+          PYEOF
+
+      - name: Post review comment on PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr comment "$PR_NUMBER" --body "$(cat review_body.txt)"
