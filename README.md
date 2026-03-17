@@ -108,6 +108,26 @@ Works in Telegram, Discord, Signal, iMessage — pure Unicode, no images.
 
 ---
 
+## Repo Structure
+
+```
+shark-pattern/
+├── SKILL.md              # Main shark skill — load this
+├── shark.sh              # Ralph-style loop enforcer (Linux/Mac)
+├── shark.ps1             # Ralph-style loop enforcer (Windows)
+├── shark-exec/
+│   ├── SKILL.md          # Sub-skill: background exec + cron poller
+│   ├── scripts/
+│   │   └── poll-and-deliver.js
+│   └── state/
+│       └── .gitkeep
+└── tests/
+    ├── lint.sh           # Structural lint tests
+    └── scenarios.md      # Behavioural test specs
+```
+
+---
+
 ## Install
 
 ### ⚡ Universal one-liner (any agent, any repo)
@@ -120,14 +140,31 @@ Drop `SHARK.md` in your project root. Every agent that reads context files will 
 ---
 
 ### Claude Code
-```bash
-curl -o SHARK.md https://raw.githubusercontent.com/keugenek/shark-pattern/main/SKILL.md
+```sh
+# Install as a skill (full repo with shark-exec)
+mkdir -p ~/.claude/skills
+git clone https://github.com/keugenek/shark-pattern ~/.claude/skills/shark
 ```
 Add to `CLAUDE.md`:
 ```markdown
 ## Execution Model
-See SHARK.md — use the Shark Pattern for any multi-step task with slow tools.
+See ~/.claude/skills/shark/SKILL.md — use the Shark Pattern for any multi-step task with slow tools.
 ```
+
+Or drop just the SKILL.md:
+```bash
+curl -o SHARK.md https://raw.githubusercontent.com/keugenek/shark-pattern/main/SKILL.md
+```
+
+---
+
+### OpenClaw
+```sh
+# Install for OpenClaw
+mkdir -p ~/clawd/skills
+git clone https://github.com/keugenek/shark-pattern ~/clawd/skills/shark
+```
+OpenClaw will auto-discover `SKILL.md` from the cloned directory.
 
 ---
 
@@ -165,16 +202,6 @@ curl -o .cursor/rules/shark.md \
 ```bash
 curl -o SHARK.md https://raw.githubusercontent.com/keugenek/shark-pattern/main/SKILL.md
 aider --read SHARK.md
-```
-
----
-
-### OpenClaw
-```bash
-# Via ClawHub:
-npx clawhub@latest install shark
-# Or directly:
-git clone https://github.com/keugenek/shark-pattern ~/clawd/skills/shark
 ```
 
 ---
