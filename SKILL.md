@@ -1,9 +1,9 @@
 ---
 name: shark
 slug: shark
-version: 0.1.0
-summary: "The Shark Pattern — non-blocking agent execution. Spawn remoras for slow tools, keep the main agent swimming. A shark that stops swimming dies."
-tags: [async, performance, subagents, non-blocking, concurrency, patterns]
+version: 0.2.0
+summary: "The Shark Pattern — universal non-blocking execution for any AI coding agent. Spawn remoras for slow tools, keep the main agent swimming. Works with Claude Code, Codex, Gemini CLI, Cursor, Aider, OpenClaw."
+tags: [async, performance, subagents, non-blocking, concurrency, patterns, claude-code, codex, gemini, cursor, aider]
 homepage: https://github.com/keugenek/shark-pattern
 author: keugenek
 ---
@@ -11,6 +11,8 @@ author: keugenek
 # 🦈 The Shark Pattern
 
 > *A shark that stops swimming dies. An agent that waits for tools wastes compute.*
+
+**Works with:** Claude Code · Codex · Gemini CLI · Cursor · Windsurf · Aider · OpenClaw · any LLM agent
 
 ## When to Use This Skill
 

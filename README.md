@@ -2,189 +2,241 @@
 
 > *A shark that stops swimming dies. An agent that waits for tools wastes compute.*
 
+**Works with:** Claude Code · Codex · Gemini CLI · Cursor · Windsurf · Aider · OpenClaw · any LLM agent
+
 ## What Is This?
 
-The **Shark Pattern** is a non-blocking execution model for AI coding agents.
+The **Shark Pattern** is a universal non-blocking execution model for AI coding agents.
 
-**The rule:** Every LLM turn completes in under 30 seconds. Slow operations get spawned as sub-agents. The main agent never waits.
+**The rule:** Every LLM turn completes in under 30 seconds. Slow operations get spawned as **remoras**. The main agent never waits.
 
-**The Pilot Fish sub-pattern:** When a remora finishes early and others are still running, spawn a time-bounded pilot fish to pre-analyse partial results — killed when the last primary completes.
+### The Three Fish
+
+| Fish | Role |
+|------|------|
+| 🦈 **Shark** | Main agent — never stops, always reasoning |
+| 🐟 **Remora** | Timed sub-agents — attach to the shark, do the slow work in parallel |
+| 🐠 **Pilot Fish** | Time-bounded pre-analysis — swim ahead while remoras are running |
+
+---
+
+## Why?
+
+### The Problem
+
+Most agents work sequentially:
+```
+think → slow tool → WAIT 45s → think → slow tool → WAIT 30s → ...
+```
+90% of runtime is spent waiting. You're paying for LLM compute while it stares at a spinner.
+
+### The Solution — Shark + Remoras
+```
+think → spawn 🐟 remora(web search)  ────────────────► result
+      → spawn 🐟 remora(SSH command) ──────────────────────► result
+      → spawn 🐟 remora(build/test)  ──────────────────────────► result
+      → 🦈 keep reasoning in parallel
+      → first remora back → spawn 🐠 pilot fish (pre-analyse)
+      → all remoras back → synthesise + incorporate pilot fish draft
+```
+
+### Comparison
+
+| | Sequential | Ralph Loop | 🦈 Shark |
+|--|--|--|--|
+| Execution | Blocking | Iterative, blocking | Parallel, non-blocking |
+| Tool wait | Always | Always | Never |
+| Idle time | Wasted | Wasted | Pilot fish pre-analysis |
+| Speed | Linear | Linear | Bounded by slowest parallel task |
+| Works with | Any agent | Any agent | **Any agent** |
+| Prior art | — | ghuntley.com/ralph | **Novel — no prior art** |
+
+---
+
+## Lifecycle
+
+```
+┌─────────────┐
+│  DECOMPOSE  │  Break task into N independent subtasks
+└──────┬──────┘
+       │ spawn N remoras in parallel
+       ▼
+┌─────────────┐
+│    SPAWN    │  sessions_spawn × N, record IDs, keep swimming
+└──────┬──────┘
+       │ first remora completes early?
+       ├──────────────────────────────► spawn 🐠 pilot fish (pre-analyse)
+       │ main agent reasons while waiting
+       ▼
+┌─────────────┐     timeout ⏱ / crash ❌
+│   MONITOR   │ ──────────────────────► partial result still useful
+└──────┬──────┘
+       │ all done or deadline hit
+       ▼
+┌─────────────┐
+│  AGGREGATE  │  Merge results + pilot fish draft, note failures
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│   REPORT    │  Single coherent response: "3/4 succeeded, 1 timed out"
+└─────────────┘
+```
+
+**No nested remoras** — remoras always run inline. Only the main shark spawns.
+
+---
+
+## Progress Output (chat-friendly)
+
+Works in Telegram, Discord, Signal, iMessage — pure Unicode, no images.
+
+```
+🦈 3 remoras · 1 pilot fish
+
+⊙ [A] web search          ████████████ ✅ 12s
+⊙ [B] SSH check           ████████████ ✅ 8s
+○ [C] build + test         ██████░░░░░░ ~18s left
+◈ [P] Pilot fish           ████░░░░░░░░ ~14s left
+
+↳ synthesising…
+```
+
+**Symbols:** `◉`=done `○`=pending `⊙`=running `◈`=pilot fish `⏱`=timeout `❌`=error
+
+**Bar fill:** `filled = round(elapsed / timeout * 12)` blocks of `█`, remainder `░`
 
 ---
 
 ## Install
 
-### OpenClaw (Claude / Sonnet / Opus)
-
-**Option A — ClawHub (recommended):**
+### ⚡ Universal one-liner (any agent, any repo)
 ```bash
-# Install
-npx clawhub@latest install shark
-
-# Publish your own skill (correct command):
-clawhub publish . --slug shark --name "Shark" --version 1.0.0 --changelog "Initial release"
-# or sync all local skills:
-clawhub sync
+curl -sO https://raw.githubusercontent.com/keugenek/shark-pattern/main/SKILL.md \
+  && mv SKILL.md SHARK.md && echo "SHARK.md" >> .gitignore
 ```
-
-**Option B — directly from this repo:**
-```bash
-# Copy SKILL.md into your OpenClaw workspace
-curl -o ~/clawd/skills/shark/SKILL.md \
-  https://raw.githubusercontent.com/keugenek/shark-pattern/main/SKILL.md
-```
-Or clone:
-```bash
-git clone https://github.com/keugenek/shark-pattern ~/clawd/skills/shark
-```
-OpenClaw auto-discovers skills in `~/clawd/skills/` — no config needed.
+Drop `SHARK.md` in your project root. Every agent that reads context files will pick it up.
 
 ---
 
-### Claude Code (Anthropic CLI)
-
-Add to your `CLAUDE.md` or `AGENTS.md` in the project root:
+### Claude Code
 ```bash
-curl -o SHARK.md \
-  https://raw.githubusercontent.com/keugenek/shark-pattern/main/SKILL.md
+curl -o SHARK.md https://raw.githubusercontent.com/keugenek/shark-pattern/main/SKILL.md
 ```
-Then reference it in your `CLAUDE.md`:
-```markdown
-## Agent Skills
-- See SHARK.md for the Shark Pattern — use it for any multi-step task with slow tools.
-```
-Or paste the contents of `SKILL.md` directly into your `CLAUDE.md`.
-
----
-
-### Codex (OpenAI)
-
-Add to your `AGENTS.md` in the project root:
-```bash
-curl -o SHARK.md \
-  https://raw.githubusercontent.com/keugenek/shark-pattern/main/SKILL.md
-```
-Reference in `AGENTS.md`:
+Add to `CLAUDE.md`:
 ```markdown
 ## Execution Model
-Follow the Shark Pattern defined in SHARK.md.
-Never block on slow tools — spawn sub-agents, keep the main agent moving.
+See SHARK.md — use the Shark Pattern for any multi-step task with slow tools.
+```
+
+---
+
+### Codex
+```bash
+curl -o SHARK.md https://raw.githubusercontent.com/keugenek/shark-pattern/main/SKILL.md
+```
+Add to `AGENTS.md`:
+```markdown
+## Execution Model
+Follow the Shark Pattern (SHARK.md). Never block on slow tools — spawn remoras.
 ```
 
 ---
 
 ### Gemini CLI
-
-Add to your `GEMINI.md` or system prompt file:
 ```bash
-curl -o SHARK.md \
-  https://raw.githubusercontent.com/keugenek/shark-pattern/main/SKILL.md
-```
-Pass it as context:
-```bash
-gemini --system-prompt SHARK.md -p "your task here"
-```
-Or prepend to your prompt:
-```bash
+curl -o SHARK.md https://raw.githubusercontent.com/keugenek/shark-pattern/main/SKILL.md
+gemini --system-prompt SHARK.md -p "your task"
+# or pipe:
 cat SHARK.md your-task.md | gemini -p -
 ```
 
 ---
 
-### Cursor / Windsurf / Aider / any agent with a rules file
-
+### Cursor / Windsurf
 ```bash
 curl -o .cursor/rules/shark.md \
   https://raw.githubusercontent.com/keugenek/shark-pattern/main/SKILL.md
-# or for Aider:
-curl -o .aider.shark.md \
-  https://raw.githubusercontent.com/keugenek/shark-pattern/main/SKILL.md
-```
-Add to your rules/conventions file:
-```markdown
-Follow the Shark Pattern (shark.md) for all multi-step tasks.
 ```
 
 ---
 
-### One-liner for any project
-
-Drop `SHARK.md` into any repo root — works as context for any agent:
+### Aider
 ```bash
-curl -sO https://raw.githubusercontent.com/keugenek/shark-pattern/main/SKILL.md \
-  && mv SKILL.md SHARK.md \
-  && echo "SHARK.md" >> .gitignore
+curl -o SHARK.md https://raw.githubusercontent.com/keugenek/shark-pattern/main/SKILL.md
+aider --read SHARK.md
+```
+
+---
+
+### OpenClaw
+```bash
+# Via ClawHub:
+npx clawhub@latest install shark
+# Or directly:
+git clone https://github.com/keugenek/shark-pattern ~/clawd/skills/shark
 ```
 
 ---
 
 ## Usage
 
-Once installed, tell your agent:
+Tell your agent (works in any coding assistant):
 - `"Use shark mode"`
-- `"Non-blocking — spawn where needed"`
+- `"Non-blocking — spawn remoras where needed"`
 - `"Keep swimming"`
 - `"Never wait for tools"`
-
-### Progress output (chat-friendly)
-
-```
-🦈 3 remoras · 1 pilot fish
-
-⊙ [A] E2E tests         ████████████ ✅ 39s
-⊙ [B] GitHub PRs        ████████████ ✅ 33s
-○ [C] Infra ping        ████████████ ✅  9s
-◈ [P] Pilot fish        ██████░░░░░░ ~14s left
-
-↳ synthesising…
-```
+- `"Follow the Shark Pattern from SHARK.md"`
 
 ---
 
-## The Patterns
+## Enforcing the 30s Timeout
 
-### 🦈 Shark — non-blocking execution
-```
-think → spawn(slow tool A) → think
-      → spawn(slow tool B) → think
-      → receive A → incorporate → swim on
-      → receive B → synthesise → done
-```
-
-### 🐟 Pilot Fish — time-bounded pre-analysis
-```
-remora A ──► done (early)
-remora B ───────────────────────► done
-              ↓
-              spawn pilot-fish(A's result, timeout=est_remaining)
-              pilot-fish: pre-validate, draft structure, flag gaps...
-              ↓ (killed when B done)
-              synthesise A + B + pilot-fish draft
-```
+| Runtime | How to enforce |
+|---------|---------------|
+| OpenClaw subagent | `runTimeoutSeconds: 30` (confirmed in source — hard kill, partial returned) |
+| exec / shell | `timeout: 30, background: true` |
+| Gemini CLI | `timeout 30 gemini -p "..."` (Linux) or `Start-Process -Timeout 30` (Windows) |
+| Pilot fish | `runTimeoutSeconds: min(estimatedRemaining * 0.8, 25)` |
 
 ---
 
-## Comparison
+## Error Handling
 
-| | Sequential | Ralph Loop | 🦈 Shark |
-|--|--|--|--|
-| Execution | Blocking | Iterative, blocking | Parallel, non-blocking |
-| Tool wait | Always blocks | Always blocks | Never blocks |
-| Idle analysis | None | None | Pilot fish |
-| Speed | Linear | Linear | Bounded by slowest parallel task |
+| Failure | Progress bar | Recovery |
+|---------|-------------|----------|
+| Timeout | `⏱` | Use partial output, note gap in report |
+| Crash | `❌` | Skip, note in report, continue synthesis |
+| >50% failed | `⚠️` | Degraded mode — fall back to sequential |
+| All failed | — | Sequential fallback, no parallel benefit |
+
+Always report: `"3/4 remoras succeeded, 1 timed out"`
 
 ---
 
-## Timing Budget
+## Decision Tree
 
-| Operation | Action |
-|-----------|--------|
-| File read < 2s | Inline |
-| Web search 5-30s | Spawn remora |
-| SSH command 10-120s | Spawn remora |
-| Build/test 30-300s | Spawn remora |
-| Coding agent 60-600s | Spawn remora |
-| Pre-analysis (pilot fish) | Spawn with `runTimeoutSeconds` |
+```
+Estimated time > 10s AND parallelisable AND not already a remora?
+  YES → spawn remora
+  NO  → run inline
+```
+
+Max 8 concurrent remoras. Tasks >3 sentences → decompose first.
+
+---
+
+## Publishing to ClawHub
+
+```bash
+npm install -g clawhub
+clawhub login   # GitHub OAuth
+clawhub publish . \
+  --slug shark \
+  --name "Shark" \
+  --version 1.0.0 \
+  --changelog "Initial release"
+```
 
 ---
 
@@ -201,4 +253,3 @@ remora B ───────────────────────�
 ## License
 
 MIT
-
