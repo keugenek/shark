@@ -18,7 +18,13 @@ The **Shark Pattern** is a non-blocking execution model for AI coding agents.
 
 **Option A — ClawHub (recommended):**
 ```bash
+# Install
 npx clawhub@latest install shark
+
+# Publish your own skill (correct command):
+clawhub publish . --slug shark --name "Shark" --version 1.0.0 --changelog "Initial release"
+# or sync all local skills:
+clawhub sync
 ```
 
 **Option B — directly from this repo:**

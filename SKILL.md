@@ -217,13 +217,96 @@ sessions_spawn({
 // When B finishes → kill pilot fish → synthesise A + B + pilot draft
 ```
 
+## Decision Tree — When to Spawn
+
+Before every tool call, ask: **"Will this take more than 10 seconds?"**
+
+```
+Estimated time < 10s?  → run inline
+Estimated time ≥ 10s?  → spawn sub-shark
+Unknown latency?        → spawn sub-shark (assume slow)
+Data dependency on another sub-shark? → wait, then inline
+Already at 8 sub-sharks? → queue, don't stack
+```
+
+**Always spawn:** web search/fetch, SSH, build/test, coding agents, CI triggers, API calls with unknown latency
+**Always inline:** file read, memory lookup, string ops, math, local config reads
+
+---
+
+## Error Handling
+
+Sub-sharks **will** fail, timeout, or return garbage. Plan for it.
+
+### Sub-shark timeout
+```
+◉ [A] task    ████████████ ⏱ 30s [timeout]
+```
+- Treat as partial result — use whatever was returned
+- Do **not** re-spawn the same task (wastes time, likely to timeout again)
+- Note the gap in synthesis: "A timed out — data may be incomplete"
+- If A's result is critical, spawn a smaller-scoped follow-up shark
+
+### Sub-shark crash / error
+```
+◉ [A] task    ████████████ ❌ [error: connection refused]
+```
+- Log the error inline in the progress bar
+- Continue synthesis without that result
+- Mention the failure in the final report
+- Optionally file an issue / alert if it's infrastructure
+
+### Partial results (most common)
+- Most useful — a sub-shark that timed out at 28s has 28s of work in it
+- Always check if partial output is usable before discarding
+- Progress bar: `⏱` = timeout with partial, `❌` = hard error with nothing
+
+### All sub-sharks failed
+- Fall back to sequential execution for the most critical task only
+- Do not spawn another full fleet — you're likely hitting a systemic issue
+
+### Pilot fish killed mid-run
+- Normal and expected — whatever it produced is still useful
+- Incorporate partial pilot fish output into synthesis
+- Don't wait for it or re-spawn it
+
+---
+
+## Terminology
+
+- **Sub-shark** = a `sessions_spawn` call with `mode: "run"`, `runtime: "subagent"`, and `runTimeoutSeconds` set. A sub-shark is specifically a *timed* sub-agent — untimed subagents are not sub-sharks.
+- **Pilot fish** = a sub-shark spawned *after* another sub-shark completes, with a short timeout sized to the estimated remaining wait. Purpose: pre-analysis only, never primary work.
+- **Fleet** = the full set of sub-sharks spawned for one task
+- **Fin moving** = the main agent is doing useful work (not waiting)
+
+### `runTimeoutSeconds` — confirmed real
+Verified against OpenClaw source: `runTimeoutSeconds: z.number().int().min(0).optional()` — maps to the subagent wait timeout. Use it. Hard-kills the sub-agent process after N seconds, partial output returned.
+
+---
+
+## Pilot Fish Sizing Formula
+
+```
+pilotFishTimeout = min(estimatedRemaining * 0.8, 25)
+```
+
+- `estimatedRemaining` = how long you think the slowest remaining sub-shark will take
+- Cap at 25s so pilot fish always finishes before the main synthesis turn
+- If you don't know: use 20s as default
+
+Example: slowest remaining sub-shark estimated at 30s → pilot fish timeout = min(24, 25) = 24s
+
+---
+
 ## Hard Limits
 
-- **Never** use `yieldMs` > 30000 in exec calls
-- **Never** call `process(action=poll, timeout > 20000)` in the main session
+- **Never** use `yieldMs` > 30000 in exec calls — this holds the main turn hostage
+- **Never** `process(action=poll, timeout > 20000)` in the main session — same reason
 - **Never** add `sleep` or wait loops in the main thread
-- **Always** spawn for operations with unknown or high latency
-- **Max** 8 concurrent sub-sharks (avoid context explosion)
+- **Always** set `runTimeoutSeconds` on sub-sharks — unbound sub-agents are not sharks
+- **Max** 8 concurrent sub-sharks — beyond this, context overhead exceeds the gain
+- **Never stack pilot fish** — one at a time, no pilot fish spawning pilot fish
+- **Spawn tasks ≤ 3 sentences** — longer task descriptions need decomposition first
 
 ## Enforcing the 30-Second Timeout
 
