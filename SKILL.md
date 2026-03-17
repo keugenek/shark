@@ -135,6 +135,57 @@ When you apply the Shark Pattern, briefly announce it:
 
 Then proceed immediately without waiting.
 
+## The Pilot Fish Sub-Pattern
+
+> *Pilot fish swim alongside sharks doing prep work. When you have idle time, use it.*
+
+When one sub-shark returns early and others are still running:
+
+1. **Spawn a pilot fish** — a time-bounded analysis sub-agent
+2. **Give it only the partial results so far** + a hard timeout equal to the estimated remaining wait
+3. **Let it pre-validate, pre-analyse, find patterns, draft conclusions**
+4. **Kill it** (or it self-terminates) when the last primary sub-shark completes
+5. **Incorporate** whatever the pilot fish produced into the final synthesis
+
+```
+sub-shark A ──────► result (early)
+sub-shark B ────────────────────────────► result
+sub-shark C ──────────────────────────────────► result
+
+main:   spawn A, B, C
+        A done → spawn pilot-fish(A's result, timeout=est_remaining)
+        pilot-fish: pre-analyse A, draft partial report, validate data...
+        B done → pilot-fish still running, feed B's result in (or kill+reuse)
+        C done → kill pilot-fish, synthesise A+B+C+pilot-fish draft
+```
+
+### Pilot Fish Rules
+
+- **Always time-bounded** — pass `runTimeoutSeconds` equal to estimated remaining wait
+- **Never blocks** — spawned async, main agent continues
+- **Opportunistic** — if it finishes early, bonus; if killed mid-run, partial output is still useful
+- **One at a time** — don't stack pilot fish on pilot fish
+- **Task:** pre-validate data, find gaps, draft structure, flag anomalies, prepare questions
+
+### Example
+
+```
+// Sub-sharks A (fast) and B (slow) both spawned
+// A finishes in 10s, B will take another 30s
+
+// Spawn pilot fish with 25s budget:
+sessions_spawn({
+  task: "Pre-analyse these results from sub-shark A. 
+         Validate the data, note any gaps, draft the structure 
+         of the final report. Stop after 25 seconds.",
+  runTimeoutSeconds: 25,
+  mode: "run"
+})
+
+// Main agent continues doing other work
+// When B finishes → kill pilot fish → synthesise A + B + pilot draft
+```
+
 ## Hard Limits
 
 - **Never** use `yieldMs` > 30000 in exec calls
