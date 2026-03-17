@@ -225,6 +225,68 @@ sessions_spawn({
 - **Always** spawn for operations with unknown or high latency
 - **Max** 8 concurrent sub-sharks (avoid context explosion)
 
+## Enforcing the 30-Second Timeout
+
+The 30s cap isn't just a guideline — here's how to actually enforce it per runtime.
+
+### OpenClaw subagents
+```js
+sessions_spawn({
+  task: "...",
+  mode: "run",
+  runtime: "subagent",
+  runTimeoutSeconds: 30   // hard kill after 30s — agent gets SIGTERM
+})
+```
+`runTimeoutSeconds` is enforced by the OpenClaw runtime — the sub-agent process is killed if it exceeds it. Partial output is still returned.
+
+### exec calls (shell, SSH, scripts)
+```js
+exec({
+  command: "some-slow-command",
+  timeout: 30,        // hard kill in seconds
+  background: true,   // don't block the main agent turn
+  yieldMs: 500        // poll back quickly to check
+})
+```
+`timeout` kills the process. `background: true` means the main agent doesn't wait — it gets a session handle and can check back with `process(poll)`.
+
+### Gemini CLI via exec
+```bash
+timeout 30 gemini -p "task here"
+# or on Windows:
+Start-Process gemini -ArgumentList '-p "task"' -Wait -Timeout 30
+```
+Wrap the CLI invocation with OS-level `timeout` / `Start-Process -Timeout`.
+
+### Pilot fish — always use `runTimeoutSeconds`
+```js
+sessions_spawn({
+  task: "pre-analyse partial results, draft structure, flag gaps",
+  mode: "run",
+  runTimeoutSeconds: estimatedRemainingMs / 1000,  // die before the last sub-shark
+})
+```
+Set it to *slightly less* than your estimated remaining wait — so the pilot fish always finishes before you need to synthesise.
+
+### What happens when timeout fires
+- Sub-agent/process is killed
+- Whatever output was produced so far is returned
+- Main agent treats it as a partial result — still useful for synthesis
+- Log: `[timeout]` in the progress bar instead of `✅`
+
+```
+⊙ [A] slow task    ████████████ ⏱ 30s [timeout — partial result]
+```
+
+### The LLM turn itself
+You can't hard-kill an LLM mid-turn, but you can:
+1. **Keep prompts tight** — don't ask for exhaustive analysis in one turn
+2. **Use `thinking: "none"`** for fast sub-tasks that don't need deep reasoning
+3. **Break large tasks** into smaller shark-able chunks upfront
+
+Rule of thumb: if a task description is >3 sentences, it probably needs to be split into sub-sharks.
+
 ## Compatibility — Claude, Codex, Gemini CLI
 
 The Shark Pattern is **runtime-agnostic**. Sub-sharks can be any agent type.
