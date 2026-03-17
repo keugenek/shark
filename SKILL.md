@@ -34,6 +34,36 @@ If any operation would take longer:
 
 You are **never** in I/O wait. You are **always** reasoning about something.
 
+## Lifecycle
+
+```
+┌─────────────┐
+│  DECOMPOSE  │  Break task into N independent subtasks
+└──────┬──────┘
+       │ spawn N remoras (+ 1 pilot fish when first completes early)
+       ▼
+┌─────────────┐
+│    SPAWN    │  sessions_spawn × N, all parallel, record session IDs
+└──────┬──────┘
+       │ main agent keeps reasoning (never waits)
+       ▼
+┌─────────────┐     timeout/crash
+│   MONITOR   │ ──────────────────► MARK ⏱/❌ (partial still useful)
+└──────┬──────┘
+       │ all done OR deadline hit
+       ▼
+┌─────────────┐
+│  AGGREGATE  │  Collect results, note failures, merge pilot fish draft
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│   REPORT    │  Single coherent response with failure count noted
+└─────────────┘
+```
+
+**No nested remoras.** If a remora is running, it executes inline — remoras cannot spawn their own remoras. Only the main shark spawns.
+
 ## The Pattern
 
 ### Bad (Ralph-style blocking):
@@ -261,6 +291,10 @@ remoras **will** fail, timeout, or return garbage. Plan for it.
 - Always check if partial output is usable before discarding
 - Progress bar: `⏱` = timeout with partial, `❌` = hard error with nothing
 
+### >50% remoras failed
+- Degrade gracefully — fall back to sequential for remaining work
+- Note in report: "⚠️ degraded mode — N/M remoras failed"
+
 ### All remoras failed
 - Fall back to sequential execution for the most critical task only
 - Do not spawn another full fleet — you're likely hitting a systemic issue
@@ -278,6 +312,7 @@ remoras **will** fail, timeout, or return garbage. Plan for it.
 - **Pilot fish** = a remora spawned *after* another remora completes, with a short timeout sized to the estimated remaining wait. Purpose: pre-analysis only, never primary work.
 - **Fleet** = the full set of remoras spawned for one task
 - **Fin moving** = the main agent is doing useful work (not waiting)
+- **No nested remoras** = remoras always execute inline — only the main shark spawns
 
 ### `runTimeoutSeconds` — confirmed real
 Verified against OpenClaw source: `runTimeoutSeconds: z.number().int().min(0).optional()` — maps to the subagent wait timeout. Use it. Hard-kills the sub-agent process after N seconds, partial output returned.
