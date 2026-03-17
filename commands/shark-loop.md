@@ -18,7 +18,9 @@ Parse the arguments:
 Run the shark loop:
 
 ```
-SHARK_MAX_LOOPS=<N> SHARK_LOOP_TIMEOUT=<S> powershell.exe -ExecutionPolicy Bypass -File "$SKILL_DIR/shark.ps1" "<TASK_DESCRIPTION>"
+$env:SHARK_MAX_LOOPS = "<N>"
+$env:SHARK_LOOP_TIMEOUT = "<S>"
+powershell.exe -ExecutionPolicy Bypass -File "$SKILL_DIR/shark.ps1" "<TASK_DESCRIPTION>"
 ```
 
 Report the result when complete.

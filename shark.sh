@@ -60,6 +60,40 @@ build_prompt() {
   echo "Write progress to SHARK_LOG.md after each loop."
 }
 
+run_claude_with_timeout() {
+  _prompt_file=$1
+  _timeout_flag=$2
+
+  rm -f "$_timeout_flag"
+
+  claude --print --permission-mode bypassPermissions < "$_prompt_file" &
+  _claude_pid=$!
+
+  (
+    sleep "$LOOP_TIMEOUT"
+    if kill -0 "$_claude_pid" 2>/dev/null; then
+      : > "$_timeout_flag"
+      kill "$_claude_pid" 2>/dev/null
+      sleep 1
+      kill -9 "$_claude_pid" 2>/dev/null
+    fi
+  ) &
+  _watchdog_pid=$!
+
+  wait "$_claude_pid"
+  _exit_code=$?
+
+  kill "$_watchdog_pid" 2>/dev/null
+  wait "$_watchdog_pid" 2>/dev/null
+
+  if [ -f "$_timeout_flag" ]; then
+    rm -f "$_timeout_flag"
+    return 124
+  fi
+
+  return "$_exit_code"
+}
+
 CURRENT_LOOP=0
 DONE_FILE="$SCRIPT_DIR/.shark-done"
 rm -f "$DONE_FILE"
@@ -75,8 +109,12 @@ while [ $CURRENT_LOOP -lt $MAX_LOOPS ]; do
   LOOP_START=$(date +%s)
 
   # Run claude with hard timeout — THIS is the 30s enforcement
-  build_prompt | timeout ${LOOP_TIMEOUT}s claude --print --permission-mode bypassPermissions
+  TMP_PROMPT=$(mktemp "${TMPDIR:-/tmp}/shark-prompt.XXXXXX")
+  TIMEOUT_FLAG="${TMP_PROMPT}.timeout"
+  build_prompt > "$TMP_PROMPT"
+  run_claude_with_timeout "$TMP_PROMPT" "$TIMEOUT_FLAG"
   EXIT_CODE=$?
+  rm -f "$TMP_PROMPT" "$TIMEOUT_FLAG"
 
   LOOP_END=$(date +%s)
   ELAPSED=$((LOOP_END - LOOP_START))

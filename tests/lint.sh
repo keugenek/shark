@@ -61,6 +61,7 @@ check "Claude Code mentioned" $(grep -qi "claude" "$SKILL" && echo 0 || echo 1)
 check "Codex mentioned" $(grep -qi "codex" "$SKILL" && echo 0 || echo 1)
 check "Gemini mentioned" $(grep -qi "gemini" "$SKILL" && echo 0 || echo 1)
 check "exec timeout mentioned" $(grep -q "background: true" "$SKILL" && echo 0 || echo 1)
+check "Codex cleanup mentions close_agent" $(grep -q "close_agent" "$SKILL" && echo 0 || echo 1)
 
 # --- shark-exec checks ---
 echo ""
@@ -71,6 +72,7 @@ check "shark-exec has scripts directory" $([ -f "shark-exec/scripts/poll-and-del
 check "shark-exec covers cronJobId write-back" $(grep -q "cronJobId" shark-exec/SKILL.md && echo 0 || echo 1)
 check "shark-exec covers fast-exit handling" $(grep -qi "system event\|already completed\|fast-exit\|exits before" shark-exec/SKILL.md && echo 0 || echo 1)
 check "shark-exec covers maxSeconds" $(grep -q "maxSeconds" shark-exec/SKILL.md && echo 0 || echo 1)
+check "shark-exec covers cleanup of completed agents" $(grep -q "close_agent" shark-exec/SKILL.md && echo 0 || echo 1)
 
 # --- Anti-patterns NOT present ---
 echo ""
@@ -84,6 +86,11 @@ check "README has install section" $(grep -q "## Install" README.md && echo 0 ||
 check "README has one-liner install" $(grep -q "curl" README.md && echo 0 || echo 1)
 check "README mentions all agents" $(grep -qi "codex" README.md && echo 0 || echo 1)
 check "README has comparison table" $(grep -q "Ralph Loop" README.md && echo 0 || echo 1)
+check "Windows shark examples use PowerShell env syntax" $(grep -q '\$env:SHARK_MAX_LOOPS' "$SKILL" && grep -q '\$env:SHARK_MAX_LOOPS' commands/shark-loop.md && grep -q '\$env:SHARK_MAX_LOOPS' commands/shark-loop/SKILL.md && echo 0 || echo 1)
+check "Broken bash-style Windows env prefix absent" $((grep -Fq 'SHARK_MAX_LOOPS=<N> SHARK_LOOP_TIMEOUT=<S> powershell.exe' "$SKILL" || grep -Fq 'SHARK_MAX_LOOPS=<N> SHARK_LOOP_TIMEOUT=<S> powershell.exe' commands/shark-loop.md || grep -Fq 'SHARK_MAX_LOOPS=<N> SHARK_LOOP_TIMEOUT=<S> powershell.exe' commands/shark-loop/SKILL.md) && echo 1 || echo 0)
+check "shark-exec path includes parent shark directory" $(grep -q '<workspace>/skills/shark/shark-exec/state/pending.json' shark-exec/SKILL.md && grep -q '<workspace>/skills/shark/shark-exec/scripts/poll-and-deliver.js' shark-exec/SKILL.md && echo 0 || echo 1)
+check "shark.sh uses built-in timeout watchdog" $(grep -q "run_claude_with_timeout" shark.sh && grep -q 'sleep "\$LOOP_TIMEOUT"' shark.sh && echo 0 || echo 1)
+check "shark.sh does not hard-depend on GNU timeout" $(grep -qv '| timeout ' shark.sh && echo 0 || echo 1)
 
 # --- Summary ---
 echo ""
