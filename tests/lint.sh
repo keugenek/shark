@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 🦈 Shark Skill — Structural Lint Tests
 # Fast, no LLM needed. Runs in CI on every push.
-set -euo pipefail
+set -uo pipefail
 
 SKILL="SKILL.md"
 PASS=0
@@ -12,10 +12,10 @@ check() {
   local result="$2"
   if [ "$result" = "0" ]; then
     echo "  ✅ $desc"
-    ((PASS++))
+    PASS=$((PASS+1))
   else
     echo "  ❌ $desc"
-    ((FAIL++))
+    FAIL=$((FAIL+1))
   fi
 }
 
