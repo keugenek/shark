@@ -1,6 +1,6 @@
 ---
 name: shark-exec
-version: 0.2.0
+version: 0.2.1
 summary: "Background shell execution pattern for any AI coding agent. Wraps slow commands in background process + poller so the main agent always replies within 30s."
 tags: [async, shell, background, shark, non-blocking]
 ---
@@ -129,7 +129,7 @@ The poller will:
 
 1. Read `pending.json`
 2. For each job, check its process status
-3. If **completed**: send result to user, remove from jobs array, save pending.json
+3. If **completed**: send result to user, close the finished handle if your runtime requires explicit cleanup, remove from jobs array, save pending.json
 4. If **still running** and **past maxSeconds**: kill the process, send partial output + timeout message
 5. If **still running** and within maxSeconds: leave in place, poller will retry in 15s
 6. If jobs array is empty after processing: cancel the poller
@@ -157,6 +157,8 @@ Last output:
 Output: <last output from exec result in the system event>
 ```
 In this case, the exec result may arrive as a system event in the main session. Read it from there and deliver it directly — no need for the poller at all.
+
+If your runtime keeps completed agents around until you explicitly tear them down, close them at this point too. In Codex, a completed subagent should be `close_agent(id)`'d after its result has been delivered unless you are intentionally keeping it for reuse.
 
 **Error (process not found / session lost):**
 ```
@@ -241,6 +243,7 @@ Algorithm:
 - Background exec: `shell("command &")` + PID
 - Poll: `shell("ps -p <pid>; cat /tmp/out-<pid>.txt")`
 - Schedule: OS cron or a watcher script
+- Agent remoras: `spawn_agent(...)` → `wait_agent(...)` → deliver result → `close_agent(id)` unless you are intentionally reusing that same agent
 
 ### Cursor / Windsurf / Aider
 - Background exec: terminal background process (`&` or `Start-Job` on Windows)
@@ -254,6 +257,9 @@ Algorithm:
 ### Poll throws "session not found"
 → Remove the job from pending.json, send:
 `❌ [label] — session lost (process may have crashed or the exec session expired)`
+
+### Completed agent still hanging around
+→ If the work is done and the runtime still shows the subagent as open, close it as part of delivery cleanup. In Codex, use `close_agent(id)` after a completed `wait_agent(...)` unless you plan to reuse that agent.
 
 ### Output is very long
 → Truncate to last 50 lines. Always append truncation notice:
@@ -308,8 +314,9 @@ exec("gh run watch 12345")
    Run #12345 (main / push) · Completed successfully
    Jobs: build ✓, test ✓, deploy ✓
    ```
-4. Removes job from pending.json → jobs array empty
-5. Cancels poller `cron-8b2c`
+4. Closes the finished handle if the runtime requires explicit cleanup
+5. Removes job from pending.json → jobs array empty
+6. Cancels poller `cron-8b2c`
 
 ---
 
@@ -322,6 +329,7 @@ Before every long-running command:
 - [ ] Write to pending.json
 - [ ] Create or reuse poller
 - [ ] Update cronJobId in state
+- [ ] Close completed agents/handles if the runtime requires explicit cleanup
 
 ---
 

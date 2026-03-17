@@ -1,7 +1,7 @@
 ---
 name: shark
 slug: shark
-version: 0.3.0
+version: 0.3.1
 summary: "The Shark Pattern — universal non-blocking execution for any AI coding agent. Spawn remoras for slow tools, keep the main agent swimming. Works with Claude Code, Codex, Gemini CLI, Cursor, Aider, OpenClaw."
 tags: [async, performance, subagents, non-blocking, concurrency, patterns, claude-code, codex, gemini, cursor, aider]
 homepage: https://github.com/keugenek/shark-pattern
@@ -125,6 +125,8 @@ After spawning, immediately continue:
 ### 4. Incorporate results
 
 When remora results arrive, weave them in and continue. Never re-do work a remora already completed.
+
+If your runtime keeps subagents alive after completion, close them once you've incorporated their result. In Codex that means: wait for the remora, use its output, then `close_agent(id)` unless you intentionally plan to reuse that same agent.
 
 ## Timing Budget
 
@@ -287,6 +289,7 @@ remoras **will** fail, timeout, or return garbage. Plan for it.
 - Continue synthesis without that result
 - Mention the failure in the final report
 - Optionally file an issue / alert if it's infrastructure
+- If the runtime still shows the remora as open after completion or error, clean it up immediately. In Codex, close completed remoras with `close_agent(id)` once their output is delivered.
 
 ### Partial results (most common)
 - Most useful — a remora that timed out at 28s has 28s of work in it
@@ -347,6 +350,7 @@ Example: slowest remaining remora estimated at 30s → pilot fish timeout = min(
 - **Never** `process(action=poll, timeout > 20000)` in the main session — same reason
 - **Never** add `sleep` or wait loops in the main thread
 - **Always** set `runTimeoutSeconds` on remoras — unbound sub-agents are not sharks
+- **Always** clean up completed remoras — if your runtime requires explicit teardown, do it right after incorporating the result
 - **Max 8** concurrent remoras — beyond this, context overhead exceeds the gain
 - **Never stack pilot fish** — one at a time, no pilot fish spawning pilot fish
 - **Spawn tasks ≤ 3 sentences** — longer task descriptions need decomposition first
@@ -437,6 +441,12 @@ sessions_spawn({
   runTimeoutSeconds: 30
 })
 ```
+
+Codex-specific lifecycle:
+- Spawn with `spawn_agent(...)` or the runtime-equivalent remora launcher
+- Check completion with `wait_agent(...)`
+- If you want to reuse the same remora, send more work with `send_input(...)`
+- Otherwise, once the remora has completed and you've incorporated its result, call `close_agent(id)` so the agent does not linger in the session
 
 ### Gemini CLI
 Gemini CLI is a local process — spawn via exec with a timeout:
@@ -603,4 +613,3 @@ Use `/shark-autotune` to analyse this data and tune your settings.
 - OpenClaw sessions_spawn docs: spawn with `mode: "run"`, `runtime: "subagent"`
 - Gemini CLI: `npm install -g @google/gemini-cli`
 - The name: sharks use ram ventilation — they literally die if they stop moving
-
