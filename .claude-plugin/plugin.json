@@ -1,0 +1,7 @@
+{
+  "name": "shark",
+  "description": "The Shark Pattern — non-blocking agent execution with parallel remoras. Every LLM turn completes in under 30 seconds.",
+  "author": {
+    "name": "keugenek"
+  }
+}
