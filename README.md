@@ -1,4 +1,4 @@
-# 🦈 The Shark Pattern
+# 🦈 The Shark Skill
 
 > *A shark that stops swimming dies. An agent that waits for tools wastes compute.*
 
