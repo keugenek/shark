@@ -10,6 +10,18 @@ author: keugenek
 
 # 🦈 The Shark Pattern
 
+> **STOP — check ARGUMENTS first.** Look at the ARGUMENTS line at the bottom of this file. If the first word matches a sub-command below, execute ONLY that sub-command and stop. Do NOT apply the Shark Pattern.
+>
+> | First word | Action |
+> |------------|--------|
+> | `loop` | **Run the shell script.** Strip "loop" from args to get the task. Run: `bash "<skill_dir>/shark.sh" "<task>"` (where `<skill_dir>` is the "Base directory for this skill" shown above). Pass `--max-loops N` as `SHARK_MAX_LOOPS=N` env var, `--timeout S` as `SHARK_LOOP_TIMEOUT=S`. Defaults: 50 loops, 25s timeout. **Do not apply the Shark Pattern manually.** |
+> | `status` | Read `<skill_dir>/shark-exec/state/pending.json`, check `.shark-done` and `SHARK_LOG.md`. Report state or "No active shark jobs." |
+> | `clean` | Remove `.shark-done`, `SHARK_LOG.md`, `shark-exec/state/pending.json`. Report what was cleaned. |
+> | `autotune` | Read `<skill_dir>/state/timings.jsonl`, compute stats, recommend settings. |
+> | `help` | List sub-commands and summarize the Shark Pattern briefly. |
+>
+> **If ARGUMENTS does not start with a sub-command above**, treat the full text as a task and apply the Shark Pattern below.
+
 > *A shark that stops swimming dies. An agent that waits for tools wastes compute.*
 
 **Works with:** Claude Code · Codex · Gemini CLI · Cursor · Windsurf · Aider · OpenClaw · any LLM agent

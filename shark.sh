@@ -91,7 +91,6 @@ run_claude_with_timeout() {
   rm -f "$_timeout_flag"
 
   (
-    cd "$SCRIPT_DIR" || exit 1
     claude --print ${SHARK_CLAUDE_FLAGS:-} < "$_prompt_file"
   ) &
   _claude_pid=$!
