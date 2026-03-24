@@ -33,7 +33,7 @@ think → slow tool → WAIT 45s → think → slow tool → WAIT 30s → ...
 ### The Solution — Shark + Remoras
 ```
 think → spawn 🐟 remora(web search)  ────────────────► result
-      → spawn 🐟 remora(SSH command) ──────────────────────► result
+      → spawn 🐟 remora(remote cmd)  ──────────────────────► result
       → spawn 🐟 remora(build/test)  ──────────────────────────► result
       → 🦈 keep reasoning in parallel
       → first remora back → spawn 🐠 pilot fish (pre-analyse)
@@ -95,7 +95,7 @@ Works in Telegram, Discord, Signal, iMessage — pure Unicode, no images.
 🦈 3 remoras · 1 pilot fish
 
 ⊙ [A] web search          ████████████ ✅ 12s
-⊙ [B] SSH check           ████████████ ✅ 8s
+⊙ [B] server check        ████████████ ✅ 8s
 ○ [C] build + test         ██████░░░░░░ ~18s left
 ◈ [P] Pilot fish           ████░░░░░░░░ ~14s left
 
@@ -253,6 +253,27 @@ Max 8 concurrent remoras. Tasks >3 sentences → decompose first.
 
 ---
 
+## Security & Permissions
+
+The Shark Pattern is an **instruction-only skill** — it teaches the agent *how to schedule work*, not *what commands to run*. The skill itself does not access credentials, secrets, SSH keys, or external services. The actual commands executed are determined entirely by the user's task.
+
+### Loop scripts (`shark.sh` / `shark.ps1`)
+
+The loop scripts run `claude --print` in a timeout-enforced loop. By default they pass **no extra permission flags** — Claude Code's standard permission model applies.
+
+If you need non-interactive execution (e.g. in CI), pass permission flags explicitly via the `SHARK_CLAUDE_FLAGS` environment variable:
+
+```sh
+# Example: allow all tool calls without prompting (use with caution)
+SHARK_CLAUDE_FLAGS="--permission-mode bypassPermissions" ./shark.sh "your task"
+```
+
+### State files
+
+The skill writes only local state files (`pending.json`, `timings.jsonl`, `.shark-done`, `SHARK_LOG.md`) within its own directory. No data is sent to external services.
+
+---
+
 ## Publishing to ClawHub
 
 ```bash
@@ -279,4 +300,4 @@ clawhub publish . \
 
 ## License
 
-MIT
+Apache 2.0

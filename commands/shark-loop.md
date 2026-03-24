@@ -1,7 +1,7 @@
 ---
-description: "Run shark.ps1 loop enforcer with a task (OS-level 25s timeout per turn)"
+description: "Run shark loop enforcer with a task (OS-level 25s timeout per turn)"
 argument-hint: "TASK_DESCRIPTION [--max-loops N] [--timeout S]"
-allowed-tools: ["Bash(powershell.exe -ExecutionPolicy Bypass -File:*)"]
+allowed-tools: ["Bash(bash:*)", "Bash(powershell.exe:*)"]
 ---
 
 # Shark Loop (External Enforcer)
@@ -15,12 +15,16 @@ Parse the arguments:
 - `--max-loops N` sets SHARK_MAX_LOOPS (default: 50)
 - `--timeout S` sets SHARK_LOOP_TIMEOUT in seconds (default: 25)
 
-Run the shark loop:
-
+On Linux/Mac, run:
+```sh
+SHARK_MAX_LOOPS=<N> SHARK_LOOP_TIMEOUT=<S> bash "$SKILL_DIR/shark.sh" "<TASK_DESCRIPTION>"
 ```
+
+On Windows (PowerShell), run:
+```powershell
 $env:SHARK_MAX_LOOPS = "<N>"
 $env:SHARK_LOOP_TIMEOUT = "<S>"
-powershell.exe -ExecutionPolicy Bypass -File "$SKILL_DIR/shark.ps1" "<TASK_DESCRIPTION>"
+& "$SKILL_DIR\shark.ps1" "<TASK_DESCRIPTION>"
 ```
 
 Report the result when complete.

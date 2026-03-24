@@ -1,7 +1,7 @@
 ---
 name: shark
 slug: shark
-version: 0.3.1
+version: 0.4.0
 summary: "The Shark Pattern — universal non-blocking execution for any AI coding agent. Spawn remoras for slow tools, keep the main agent swimming. Works with Claude Code, Codex, Gemini CLI, Cursor, Aider, OpenClaw."
 tags: [async, performance, subagents, non-blocking, concurrency, patterns, claude-code, codex, gemini, cursor, aider]
 homepage: https://github.com/keugenek/shark-pattern
@@ -23,7 +23,7 @@ Trigger this skill when the user says:
 - "spawn background workers"
 - "parallel subagents"
 - "keep the main agent moving"
-- or when you notice you're about to block on a slow tool (web fetch, SSH, build, test run, API call)
+- or when you notice you're about to block on a slow tool (web fetch, build, test run, API call)
 
 ## The Rule
 
@@ -87,9 +87,9 @@ When applying the Shark Pattern, structure your work like this:
 ### 1. Identify blocking operations
 Before calling any tool, ask: "Will this take more than 20-30 seconds?"
 
-Slow tools (always spawn):
+Slow tools (always spawn — these are examples, not things this skill executes):
 - Web searches / page fetches
-- SSH commands on remote machines
+- Remote commands
 - Build / test / CI runs
 - File system scans over large directories
 - API calls with unknown latency
@@ -134,7 +134,7 @@ If your runtime keeps subagents alive after completion, close them once you've i
 |-----------|--------|--------|
 | File read | < 2s | Inline |
 | Web search | 5-30s | Spawn |
-| SSH command | 10-120s | Spawn |
+| Remote command | 10-120s | Spawn |
 | Build/test | 30-300s | Spawn |
 | Coding agent | 60-600s | Spawn |
 | Memory search | < 3s | Inline |
@@ -146,7 +146,7 @@ If your runtime keeps subagents alive after completion, close them once you've i
 1. Search web for X        [wait 15s]
 2. Search web for Y        [wait 12s]  
 3. Fetch page Z            [wait 8s]
-4. SSH check server        [wait 30s]
+4. Check remote server     [wait 30s]
 Total: ~65 seconds blocked
 ```
 
@@ -155,7 +155,7 @@ Total: ~65 seconds blocked
 1. Spawn: search X         [0s - spawned]
 2. Spawn: search Y         [0s - spawned]
 3. Spawn: fetch Z          [0s - spawned]
-4. Spawn: SSH check        [0s - spawned]
+4. Spawn: server check     [0s - spawned]
 5. Plan synthesis while waiting [15s of actual thinking]
 6. All results arrive → synthesize
 Total: ~15s of thinking + max(tool times) in parallel
@@ -263,7 +263,7 @@ Data dependency on another remora? → wait, then inline
 Already at 8 remoras? → queue, don't stack
 ```
 
-**Always spawn:** web search/fetch, SSH, build/test, coding agents, CI triggers, API calls with unknown latency
+**Always spawn:** web search/fetch, remote commands, build/test, coding agents, CI triggers, API calls with unknown latency
 **Always inline:** file read, memory lookup, string ops, math, local config reads
 
 ---
@@ -370,7 +370,7 @@ sessions_spawn({
 ```
 `runTimeoutSeconds` is enforced by the OpenClaw runtime — the sub-agent process is killed if it exceeds it. Partial output is still returned.
 
-### exec calls (shell, SSH, scripts)
+### exec calls (shell, scripts)
 ```js
 exec({
   command: "some-slow-command",
@@ -476,7 +476,7 @@ spawn pilot fish  → Claude subagent (pre-analysis, time-bounded)
 | Code generation / editing | Codex |
 | Web search / summarise | Gemini CLI |
 | Multi-step reasoning | Claude subagent |
-| File ops / SSH / shell | exec (background) |
+| File ops / shell | exec (background) |
 | Pre-analysis / drafting | Claude subagent (pilot fish) |
 
 ## shark-exec Sub-Skill
@@ -520,6 +520,7 @@ This is identical to the Ralph Loop pattern, but with the Shark Pattern as the p
 |----------|---------|-------------|
 | `SHARK_MAX_LOOPS` | `50` | Maximum iterations before giving up |
 | `SHARK_LOOP_TIMEOUT` | `25` | Per-turn timeout in seconds (hard kill) |
+| `SHARK_CLAUDE_FLAGS` | *(empty)* | Extra flags passed to `claude --print` (e.g. `--permission-mode acceptEdits`) |
 
 ### Completion protocol
 
@@ -540,13 +541,20 @@ Apply the Shark Pattern to the given task. Decompose, spawn remoras for slow ops
 
 ### `/shark-loop <task> [--max-loops N] [--timeout S]`
 
-Run the external shark loop enforcer. Execute:
+Run the external shark loop enforcer.
+
+On Linux/Mac:
+```sh
+SHARK_MAX_LOOPS=<N> SHARK_LOOP_TIMEOUT=<S> bash "<skill_dir>/shark.sh" "<task>"
 ```
+
+On Windows (PowerShell):
+```powershell
 $env:SHARK_MAX_LOOPS = "<N>"
 $env:SHARK_LOOP_TIMEOUT = "<S>"
-powershell.exe -ExecutionPolicy Bypass -File "<skill_dir>/shark.ps1" "<task>"
+& "<skill_dir>\shark.ps1" "<task>"
 ```
-Defaults: `--max-loops 50`, `--timeout 25`. On Linux/Mac use `shark.sh` instead.
+Defaults: `--max-loops 50`, `--timeout 25`.
 
 ### `/shark-status`
 

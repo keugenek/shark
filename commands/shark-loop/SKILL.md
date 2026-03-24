@@ -14,11 +14,11 @@ Parse the arguments:
 - `--max-loops N` sets SHARK_MAX_LOOPS (default: 50)
 - `--timeout S` sets SHARK_LOOP_TIMEOUT in seconds (default: 25)
 
-On Windows, run:
-```
+On Windows (PowerShell), run:
+```powershell
 $env:SHARK_MAX_LOOPS = "<N>"
 $env:SHARK_LOOP_TIMEOUT = "<S>"
-powershell.exe -ExecutionPolicy Bypass -File "$SKILL_DIR/../shark.ps1" "<TASK_DESCRIPTION>"
+& "$SKILL_DIR\..\shark.ps1" "<TASK_DESCRIPTION>"
 ```
 
 On Linux/Mac, run:

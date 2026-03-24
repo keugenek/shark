@@ -18,7 +18,7 @@ Use this skill whenever you're about to call a shell command and the command is 
 - `gh run watch <run-id>` — waiting for CI
 - `npm run build` / `pytest` / `cargo build`
 - `docker build`, `docker pull`
-- Long-running SSH remote commands
+- Long-running remote commands
 - Any command with a long blocking wait
 - Any command that polls, watches, or tails output
 

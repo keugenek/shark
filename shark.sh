@@ -27,6 +27,30 @@ fi
 # Task hash for correlating loops within a run
 TASK_HASH=$(printf '%s%s' "$TASK" "$(date +%Y%m%d%H%M%S)" | md5sum 2>/dev/null | cut -c1-8 || printf '%s%s' "$TASK" "$(date +%Y%m%d%H%M%S)" | md5 2>/dev/null | cut -c1-8 || echo "nohash")
 
+# Validate positive integer env vars
+validate_positive_int() {
+  _value=$1
+  _name=$2
+  _fallback=$3
+  case "$_value" in
+    ''|*[!0-9]*|0)
+      if [ -n "$_value" ]; then
+        echo "[WARN] Invalid $_name='$_value' - using default $_fallback" >&2
+      fi
+      printf '%s' "$_fallback"
+      ;;
+    *) printf '%s' "$_value" ;;
+  esac
+}
+
+MAX_LOOPS=$(validate_positive_int "$MAX_LOOPS" "SHARK_MAX_LOOPS" "50")
+LOOP_TIMEOUT=$(validate_positive_int "$LOOP_TIMEOUT" "SHARK_LOOP_TIMEOUT" "25")
+
+if [ "$LOOP_TIMEOUT" -gt 29 ]; then
+  echo "[WARN] SHARK_LOOP_TIMEOUT=$LOOP_TIMEOUT exceeds per-turn budget - clamping to 29" >&2
+  LOOP_TIMEOUT=29
+fi
+
 # Write a timing entry to state/timings.jsonl
 write_timing() {
   _loop=$1
@@ -66,7 +90,10 @@ run_claude_with_timeout() {
 
   rm -f "$_timeout_flag"
 
-  claude --print --permission-mode bypassPermissions < "$_prompt_file" &
+  (
+    cd "$SCRIPT_DIR" || exit 1
+    claude --print ${SHARK_CLAUDE_FLAGS:-} < "$_prompt_file"
+  ) &
   _claude_pid=$!
 
   (

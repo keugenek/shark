@@ -7,7 +7,7 @@ A shark that stops swimming dies.
 
 Your AI agent is currently dying.
 
-90% of agent runtime is sitting in I/O wait — waiting for web searches, SSH, builds, tests, API calls.
+90% of agent runtime is sitting in I/O wait — waiting for web searches, builds, tests, API calls.
 
 Introducing 🦈 The Shark Pattern — a non-blocking agent execution model for OpenClaw.
 
@@ -38,7 +38,7 @@ The Shark rule:
 
 ```
 think → spawn(web search) → think
-      → spawn(SSH run)    → think  
+      → spawn(remote cmd) → think
       → spawn(build)      → synthesize
       → receive results   → swim on
 ```
