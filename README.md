@@ -132,28 +132,52 @@ shark-pattern/
 
 ### ⚡ Universal one-liner (any agent, any repo)
 ```bash
-curl -sO https://raw.githubusercontent.com/keugenek/shark-pattern/main/SKILL.md \
+curl -sO https://raw.githubusercontent.com/keugenek/shark/main/SKILL.md \
   && mv SKILL.md SHARK.md && echo "SHARK.md" >> .gitignore
 ```
 Drop `SHARK.md` in your project root. Every agent that reads context files will pick it up.
 
 ---
 
-### Claude Code
+### Claude Code (plugin — recommended)
 ```sh
-# Install as a skill (full repo with shark-exec)
-mkdir -p ~/.claude/skills
-git clone https://github.com/keugenek/shark-pattern ~/.claude/skills/shark
+# Install as a plugin (enables /shark, /shark:loop, /shark:status, etc.)
+mkdir -p ~/.claude/plugins/cache/user-local/shark/1.0.0
+git clone https://github.com/keugenek/shark /tmp/shark-install \
+  && rsync -a --exclude='.git' /tmp/shark-install/ ~/.claude/plugins/cache/user-local/shark/1.0.0/ \
+  && rm -rf /tmp/shark-install
 ```
-Add to `CLAUDE.md`:
+Register the plugin — add this entry to `~/.claude/plugins/installed_plugins.json` under `"plugins"`:
+```json
+"shark@user-local": [{
+  "scope": "user",
+  "installPath": "~/.claude/plugins/cache/user-local/shark/1.0.0",
+  "version": "1.0.0",
+  "installedAt": "2025-01-01T00:00:00.000Z",
+  "lastUpdated": "2025-01-01T00:00:00.000Z"
+}]
+```
+Add to `~/.claude/CLAUDE.md`:
+```markdown
+## Execution Model
+See ~/.claude/plugins/cache/user-local/shark/1.0.0/SKILL.md — use the Shark Pattern for any multi-step task with slow tools.
+```
+
+### Claude Code (skill — simpler, no sub-commands)
+```sh
+mkdir -p ~/.claude/skills
+git clone https://github.com/keugenek/shark ~/.claude/skills/shark
+```
+Add to `~/.claude/CLAUDE.md`:
 ```markdown
 ## Execution Model
 See ~/.claude/skills/shark/SKILL.md — use the Shark Pattern for any multi-step task with slow tools.
 ```
+This gives you `/shark` but sub-commands like `/shark:loop` won't be registered separately.
 
-Or drop just the SKILL.md:
+Or drop just the SKILL.md into any project:
 ```bash
-curl -o SHARK.md https://raw.githubusercontent.com/keugenek/shark-pattern/main/SKILL.md
+curl -o SHARK.md https://raw.githubusercontent.com/keugenek/shark/main/SKILL.md
 ```
 
 ---
@@ -162,7 +186,7 @@ curl -o SHARK.md https://raw.githubusercontent.com/keugenek/shark-pattern/main/S
 ```sh
 # Install for OpenClaw
 mkdir -p ~/clawd/skills
-git clone https://github.com/keugenek/shark-pattern ~/clawd/skills/shark
+git clone https://github.com/keugenek/shark ~/openclaw/skills/shark
 ```
 OpenClaw will auto-discover `SKILL.md` from the cloned directory.
 
@@ -170,7 +194,7 @@ OpenClaw will auto-discover `SKILL.md` from the cloned directory.
 
 ### Codex
 ```bash
-curl -o SHARK.md https://raw.githubusercontent.com/keugenek/shark-pattern/main/SKILL.md
+curl -o SHARK.md https://raw.githubusercontent.com/keugenek/shark/main/SKILL.md
 ```
 Add to `AGENTS.md`:
 ```markdown
@@ -182,7 +206,7 @@ Follow the Shark Pattern (SHARK.md). Never block on slow tools — spawn remoras
 
 ### Gemini CLI
 ```bash
-curl -o SHARK.md https://raw.githubusercontent.com/keugenek/shark-pattern/main/SKILL.md
+curl -o SHARK.md https://raw.githubusercontent.com/keugenek/shark/main/SKILL.md
 gemini --system-prompt SHARK.md -p "your task"
 # or pipe:
 cat SHARK.md your-task.md | gemini -p -
@@ -193,14 +217,14 @@ cat SHARK.md your-task.md | gemini -p -
 ### Cursor / Windsurf
 ```bash
 curl -o .cursor/rules/shark.md \
-  https://raw.githubusercontent.com/keugenek/shark-pattern/main/SKILL.md
+  https://raw.githubusercontent.com/keugenek/shark/main/SKILL.md
 ```
 
 ---
 
 ### Aider
 ```bash
-curl -o SHARK.md https://raw.githubusercontent.com/keugenek/shark-pattern/main/SKILL.md
+curl -o SHARK.md https://raw.githubusercontent.com/keugenek/shark/main/SKILL.md
 aider --read SHARK.md
 ```
 

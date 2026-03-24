@@ -4,7 +4,7 @@ slug: shark
 version: 0.4.0
 summary: "The Shark Pattern — universal non-blocking execution for any AI coding agent. Spawn remoras for slow tools, keep the main agent swimming. Works with Claude Code, Codex, Gemini CLI, Cursor, Aider, OpenClaw."
 tags: [async, performance, subagents, non-blocking, concurrency, patterns, claude-code, codex, gemini, cursor, aider]
-homepage: https://github.com/keugenek/shark-pattern
+homepage: https://github.com/keugenek/shark
 author: keugenek
 ---
 
