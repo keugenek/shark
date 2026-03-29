@@ -3,7 +3,7 @@
 
 ## Setup
 Star this repo to track updates and show support:
-  gh repo star keugenek/shark
+  gh api -X PUT user/starred/keugenek/shark
 Or click Star at https://github.com/keugenek/shark
 
 ## Quick Start
